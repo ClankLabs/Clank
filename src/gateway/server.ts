@@ -15,11 +15,19 @@ import { WebSocketServer, WebSocket } from "ws";
 import { readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AgentEngine, type AgentIdentity } from "../engine/index.js";
+import { AgentEngine, type AgentIdentity, buildSystemPrompt } from "../engine/index.js";
 import { createFullRegistry, type ToolRegistry } from "../tools/index.js";
-import { createProvider, type ProviderConfig } from "../providers/index.js";
+import { createProvider, resolveWithFallback, type ProviderConfig } from "../providers/index.js";
 import { SessionStore } from "../sessions/index.js";
-import { type ClankConfig, getConfigDir } from "../config/index.js";
+import { MemoryManager } from "../memory/index.js";
+import { type ClankConfig, getConfigDir, ConfigWatcher } from "../config/index.js";
+import { CronScheduler } from "../cron/index.js";
+import { resolveRoute, deriveSessionKey, type RouteContext } from "../routing/index.js";
+import { type ChannelAdapter } from "../adapters/base.js";
+import { TelegramAdapter } from "../adapters/telegram.js";
+import { DiscordAdapter } from "../adapters/discord.js";
+import { WebAdapter } from "../adapters/web.js";
+import { PluginLoader } from "../plugins/index.js";
 import {
   type Frame,
   type RequestFrame,
@@ -50,17 +58,56 @@ export class GatewayServer {
   private engines = new Map<string, AgentEngine>();
   private sessionStore: SessionStore;
   private toolRegistry: ToolRegistry;
+  private memoryManager: MemoryManager;
+  private cronScheduler: CronScheduler;
+  private configWatcher: ConfigWatcher;
+  private pluginLoader: PluginLoader;
+  private adapters: ChannelAdapter[] = [];
   private running = false;
 
   constructor(config: ClankConfig) {
     this.config = config;
     this.sessionStore = new SessionStore(join(getConfigDir(), "conversations"));
     this.toolRegistry = createFullRegistry();
+    this.memoryManager = new MemoryManager(join(getConfigDir(), "memory"));
+    this.cronScheduler = new CronScheduler(join(getConfigDir(), "cron"));
+    this.configWatcher = new ConfigWatcher();
+    this.pluginLoader = new PluginLoader();
   }
 
   /** Start the gateway server */
   async start(): Promise<void> {
+    // Initialize subsystems
     await this.sessionStore.init();
+    await this.memoryManager.init();
+    await this.cronScheduler.init();
+
+    // Load plugins and register their tools
+    const plugins = await this.pluginLoader.loadAll();
+    for (const tool of this.pluginLoader.getTools()) {
+      this.toolRegistry.register(tool);
+    }
+    if (plugins.length > 0) {
+      console.log(`  Loaded ${plugins.length} plugin(s), ${this.pluginLoader.getTools().length} tool(s)`);
+    }
+
+    // Start config watcher for hot-reload
+    await this.configWatcher.start();
+    this.configWatcher.on("change", ({ newConfig }: { newConfig: ClankConfig }) => {
+      this.config = newConfig;
+      console.log("  Config reloaded");
+    });
+
+    // Start cron scheduler
+    this.cronScheduler.setHandler(async (job) => {
+      console.log(`  Cron: running job "${job.name}"`);
+      const engine = await this.getOrCreateEngine(`cron:${job.id}`, job.agentId, "cron");
+      await engine.sendMessage(job.prompt);
+    });
+    this.cronScheduler.start();
+
+    // Start channel adapters
+    await this.startAdapters();
 
     const port = this.config.gateway.port || DEFAULT_PORT;
     const bind = this.config.gateway.bind === "loopback" ? "127.0.0.1" : "0.0.0.0";
@@ -82,9 +129,58 @@ export class GatewayServer {
     });
   }
 
+  /** Start all configured channel adapters */
+  private async startAdapters(): Promise<void> {
+    console.log("  Starting channel adapters...");
+
+    const adapterClasses: ChannelAdapter[] = [
+      new TelegramAdapter(),
+      new DiscordAdapter(),
+      new WebAdapter(),
+    ];
+
+    for (const adapter of adapterClasses) {
+      adapter.init(this, this.config);
+      try {
+        await adapter.start();
+        this.adapters.push(adapter);
+      } catch (err) {
+        console.error(`  ${adapter.name}: failed — ${err instanceof Error ? err.message : err}`);
+      }
+    }
+  }
+
+  /**
+   * Handle an inbound message from any channel adapter.
+   * This is the main entry point for all non-WebSocket messages.
+   */
+  async handleInboundMessage(context: RouteContext, text: string): Promise<string> {
+    // Resolve which agent handles this message
+    const agentId = resolveRoute(
+      context,
+      [], // TODO: load bindings from config
+      this.config.agents.list.map((a) => ({ id: a.id, name: a.name })),
+      this.config.agents.list[0]?.id || "default",
+    );
+
+    const sessionKey = deriveSessionKey(context);
+    const engine = await this.getOrCreateEngine(sessionKey, agentId, context.channel);
+    return engine.sendMessage(text);
+  }
+
   /** Stop the gateway server */
   async stop(): Promise<void> {
     this.running = false;
+
+    // Stop subsystems
+    this.cronScheduler.stop();
+    this.configWatcher.stop();
+
+    // Stop channel adapters
+    for (const adapter of this.adapters) {
+      try { await adapter.stop(); } catch { /* best effort */ }
+    }
+    this.adapters = [];
 
     // Destroy all engines
     for (const engine of this.engines.values()) {
@@ -324,9 +420,13 @@ export class GatewayServer {
     const agentConfig = this.config.agents.list.find((a) => a.id === agentId);
     const modelConfig = agentConfig?.model || this.config.agents.defaults.model;
 
-    const resolved = createProvider(modelConfig.primary, this.config.models.providers, {
-      maxResponseTokens: this.config.agents.defaults.maxResponseTokens,
-    });
+    // Resolve provider with fallback chain
+    const resolved = await resolveWithFallback(
+      modelConfig.primary,
+      modelConfig.fallbacks || [],
+      this.config.models.providers,
+      { maxResponseTokens: this.config.agents.defaults.maxResponseTokens },
+    );
 
     const identity: AgentIdentity = {
       id: agentId,
@@ -337,17 +437,34 @@ export class GatewayServer {
       tools: agentConfig?.tools,
     };
 
+    // Build system prompt from workspace files + memory
+    const systemPrompt = await buildSystemPrompt({
+      identity,
+      workspaceDir: identity.workspace,
+      channel,
+    });
+
+    // Inject memory context into system prompt
+    const memoryBlock = await this.memoryManager.buildMemoryBlock("", identity.workspace);
+    const fullPrompt = memoryBlock
+      ? systemPrompt + "\n\n---\n\n" + memoryBlock
+      : systemPrompt;
+
     engine = new AgentEngine({
       identity,
       toolRegistry: this.toolRegistry,
       sessionStore: this.sessionStore,
       provider: resolved,
       autoApprove: this.config.tools.autoApprove,
-      systemPrompt: `You are ${identity.name}, a helpful AI assistant.\nWorking directory: ${identity.workspace}`,
+      systemPrompt: fullPrompt,
     });
 
     await engine.loadSession(sessionKey, channel);
     this.engines.set(sessionKey, engine);
+
+    // Execute plugin hooks
+    await this.pluginLoader.executeHooks("before_agent_start", { agentId, sessionKey });
+
     return engine;
   }
 

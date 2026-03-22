@@ -54,17 +54,34 @@ export class DiscordAdapter extends ChannelAdapter {
         if (message.author.bot) return;
 
         const isDM = !message.guild;
-        const inbound: InboundMessage = {
-          text: message.content,
-          channel: "discord",
-          senderId: message.author.id,
-          peerId: isDM ? message.author.id : message.channelId,
-          peerKind: isDM ? "dm" : "group",
-          mentioned: message.mentions.has(client.user!),
-        };
 
-        // TODO: Route through gateway properly
-        console.log(`  Discord: ${isDM ? "dm" : "guild"} from ${message.author.tag}: ${message.content.slice(0, 50)}`);
+        // Route through gateway
+        if (!this.gateway) return;
+
+        try {
+          await message.channel.sendTyping();
+
+          const response = await this.gateway.handleInboundMessage(
+            {
+              channel: "discord",
+              peerId: isDM ? message.author.id : message.channelId,
+              peerKind: isDM ? "dm" : "group",
+              guildId: message.guild?.id,
+            },
+            message.content,
+          );
+
+          if (response) {
+            // Discord has 2000 char limit
+            const chunks = splitDiscordMessage(response, 1900);
+            for (const chunk of chunks) {
+              await message.reply(chunk);
+            }
+          }
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          await message.reply(`Error: ${errMsg.slice(0, 200)}`);
+        }
       });
 
       await client.login(discordConfig.botToken);
@@ -81,7 +98,36 @@ export class DiscordAdapter extends ChannelAdapter {
   }
 
   async send(sessionKey: string, payload: ReplyPayload): Promise<void> {
-    // TODO: Send message to Discord channel/DM
-    // Extract channel ID from session key and send via discord.js
+    if (!payload.text || !this.client) return;
+    const client = this.client as any;
+
+    // Extract channel ID from session key
+    const parts = sessionKey.split(":");
+    const channelId = parts[parts.length - 1];
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.send) {
+        const chunks = splitDiscordMessage(payload.text, 1900);
+        for (const chunk of chunks) {
+          await channel.send(chunk);
+        }
+      }
+    } catch {
+      // Channel not accessible
+    }
   }
+}
+
+function splitDiscordMessage(text: string, maxLen: number): string[] {
+  if (text.length <= maxLen) return [text];
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) { chunks.push(remaining); break; }
+    let splitAt = remaining.lastIndexOf("\n", maxLen);
+    if (splitAt < maxLen * 0.5) splitAt = maxLen;
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt);
+  }
+  return chunks;
 }

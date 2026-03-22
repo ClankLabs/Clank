@@ -64,19 +64,33 @@ export class TelegramAdapter extends ChannelAdapter {
           }
         }
 
-        // Normalize and forward to gateway
-        const inbound: InboundMessage = {
-          text: msg.text,
-          channel: "telegram",
-          senderId: userId || 0,
-          peerId: chatId,
-          peerKind: isGroup ? "group" : "dm",
-          mentioned: true,
-        };
+        // Route through gateway
+        if (!this.gateway) return;
 
-        // TODO: Route through gateway properly
-        // For now, placeholder
-        console.log(`  Telegram: ${isGroup ? "group" : "dm"} from ${userId}: ${msg.text.slice(0, 50)}`);
+        try {
+          // Send typing indicator
+          await ctx.api.sendChatAction(chatId, "typing");
+
+          const response = await this.gateway.handleInboundMessage(
+            {
+              channel: "telegram",
+              peerId: chatId,
+              peerKind: isGroup ? "group" : "dm",
+            },
+            msg.text,
+          );
+
+          // Send response (split if too long for Telegram's 4096 char limit)
+          if (response) {
+            const chunks = splitMessage(response, 4000);
+            for (const chunk of chunks) {
+              await ctx.api.sendMessage(chatId, chunk);
+            }
+          }
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          await ctx.api.sendMessage(chatId, `Error: ${errMsg.slice(0, 200)}`);
+        }
       });
 
       await bot.start();
@@ -102,7 +116,29 @@ export class TelegramAdapter extends ChannelAdapter {
 
     const bot = this.bot as any;
     if (payload.text) {
-      await bot.api.sendMessage(Number(chatId), payload.text);
+      const chunks = splitMessage(payload.text, 4000);
+      for (const chunk of chunks) {
+        await bot.api.sendMessage(Number(chatId), chunk);
+      }
     }
   }
+}
+
+/** Split a long message into chunks that fit Telegram's limit */
+function splitMessage(text: string, maxLen: number): string[] {
+  if (text.length <= maxLen) return [text];
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) {
+      chunks.push(remaining);
+      break;
+    }
+    // Try to split at a newline
+    let splitAt = remaining.lastIndexOf("\n", maxLen);
+    if (splitAt < maxLen * 0.5) splitAt = maxLen; // No good newline, split at limit
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt);
+  }
+  return chunks;
 }

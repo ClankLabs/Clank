@@ -11,8 +11,8 @@
 
 import { createInterface } from "node:readline";
 import { join } from "node:path";
-import { AgentEngine, type AgentIdentity } from "../engine/index.js";
-import { createCoreRegistry } from "../tools/index.js";
+import { AgentEngine, type AgentIdentity, buildSystemPrompt } from "../engine/index.js";
+import { createFullRegistry } from "../tools/index.js";
 import { createProvider, resolveWithFallback } from "../providers/router.js";
 import { OllamaProvider } from "../providers/ollama.js";
 import { loadConfig, ensureConfigDir, getConfigDir } from "../config/index.js";
@@ -58,8 +58,8 @@ export async function runChat(opts: {
   const sessionStore = new SessionStore(join(getConfigDir(), "conversations"));
   await sessionStore.init();
 
-  // Create tool registry
-  const toolRegistry = createCoreRegistry();
+  // Create tool registry — full registry includes self-config tools
+  const toolRegistry = createFullRegistry();
 
   // Create agent identity
   const identity: AgentIdentity = {
@@ -72,8 +72,12 @@ export async function runChat(opts: {
     maxResponseTokens: config.agents.defaults.maxResponseTokens,
   };
 
-  // Build system prompt
-  const systemPrompt = buildSystemPrompt(identity);
+  // Build system prompt from workspace files
+  const systemPrompt = await buildSystemPrompt({
+    identity,
+    workspaceDir: identity.workspace,
+    channel: "cli",
+  });
 
   // Create engine
   const engine = new AgentEngine({
@@ -197,20 +201,6 @@ export async function runChat(opts: {
       rl.close();
     }
   });
-}
-
-/** Build the base system prompt */
-function buildSystemPrompt(identity: AgentIdentity): string {
-  const parts: string[] = [];
-
-  parts.push(`You are ${identity.name}, a helpful AI assistant.`);
-  parts.push("You have access to tools for reading/writing files, running commands, and more.");
-  parts.push("Be concise and helpful. Use tools proactively to accomplish tasks.");
-  parts.push("When you need to make changes, read the relevant files first to understand the context.");
-  parts.push("");
-  parts.push(`Working directory: ${identity.workspace}`);
-
-  return parts.join("\n");
 }
 
 /** Handle slash commands */

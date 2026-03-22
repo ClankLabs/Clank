@@ -13,9 +13,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { AgentEngine, type AgentIdentity } from "../engine/index.js";
-import { createCoreRegistry, type ToolRegistry } from "../tools/index.js";
+import { createFullRegistry, type ToolRegistry } from "../tools/index.js";
 import { createProvider, type ProviderConfig } from "../providers/index.js";
 import { SessionStore } from "../sessions/index.js";
 import { type ClankConfig, getConfigDir } from "../config/index.js";
@@ -54,7 +55,7 @@ export class GatewayServer {
   constructor(config: ClankConfig) {
     this.config = config;
     this.sessionStore = new SessionStore(join(getConfigDir(), "conversations"));
-    this.toolRegistry = createCoreRegistry();
+    this.toolRegistry = createFullRegistry();
   }
 
   /** Start the gateway server */
@@ -106,7 +107,7 @@ export class GatewayServer {
   }
 
   /** Handle HTTP requests (health, static files) */
-  private handleHttp(req: IncomingMessage, res: ServerResponse): void {
+  private async handleHttp(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = req.url || "/";
 
     if (url === "/health" || url === "/healthz") {
@@ -135,7 +136,29 @@ export class GatewayServer {
       return;
     }
 
-    // TODO: Serve web UI static files at /chat
+    // Serve Web UI at /chat
+    if (url === "/chat" || url === "/") {
+      try {
+        // Try to find index.html relative to this file's location
+        const __dirname = dirname(fileURLToPath(import.meta.url));
+        const htmlPath = join(__dirname, "..", "web", "index.html");
+        const html = await readFile(htmlPath, "utf-8");
+        res.writeHead(200, { "Content-Type": "text/html" });
+        res.end(html);
+        return;
+      } catch {
+        // Fallback: try from src directory (dev mode)
+        try {
+          const html = await readFile(join(process.cwd(), "src", "web", "index.html"), "utf-8");
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(html);
+          return;
+        } catch {
+          // Fall through to 404
+        }
+      }
+    }
+
     res.writeHead(404);
     res.end("Not found");
   }

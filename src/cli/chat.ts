@@ -31,9 +31,64 @@ export async function runChat(opts: {
   continue?: boolean;
   session?: string;
   direct?: boolean;
+  web?: boolean;
 }): Promise<void> {
   await ensureConfigDir();
   const config = await loadConfig();
+
+  // --web flag: start gateway if needed and open browser
+  if (opts.web) {
+    const port = config.gateway.port || 18789;
+    const token = config.gateway.auth.token || "";
+
+    // Check if gateway is running
+    let gatewayRunning = false;
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(2000) });
+      gatewayRunning = res.ok;
+    } catch {}
+
+    if (!gatewayRunning) {
+      // Start gateway in background
+      console.log(dim("Starting gateway..."));
+      const { fork } = await import("node:child_process");
+      const { fileURLToPath } = await import("node:url");
+      const { dirname, join } = await import("node:path");
+      const __filename = fileURLToPath(import.meta.url);
+      const entryPoint = join(dirname(__filename), "index.js");
+
+      const child = fork(entryPoint, ["gateway", "start", "--foreground"], {
+        detached: true,
+        stdio: "ignore",
+      });
+      child.unref();
+
+      // Wait for gateway to be ready
+      for (let i = 0; i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        try {
+          const res = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(1000) });
+          if (res.ok) { gatewayRunning = true; break; }
+        } catch {}
+      }
+
+      if (!gatewayRunning) {
+        console.log(red("Failed to start gateway. Try: clank gateway start"));
+        return;
+      }
+      console.log(green("Gateway started."));
+    }
+
+    // Open browser
+    const url = `http://127.0.0.1:${port}/#token=${token}`;
+    console.log(dim(`Opening ${url}`));
+    const { platform } = await import("node:os");
+    const { exec } = await import("node:child_process");
+    const openCmd = platform() === "win32" ? `start "" "${url}"` : platform() === "darwin" ? `open "${url}"` : `xdg-open "${url}"`;
+    exec(openCmd);
+    console.log(green("Web UI opened in browser."));
+    return;
+  }
 
   // Resolve model and create provider
   const modelConfig = config.agents.defaults.model;

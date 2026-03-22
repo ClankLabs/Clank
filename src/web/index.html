@@ -6,298 +6,360 @@
   <title>Clank</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --text-dim: #8b949e;
-      --accent: #58a6ff;
-      --green: #3fb950;
-      --red: #f85149;
-      --yellow: #d29922;
+      --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+      --border: #30363d; --text: #e6edf3; --text-dim: #8b949e;
+      --accent: #58a6ff; --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
     }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; }
+    a { color: var(--accent); text-decoration: none; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    /* === Sidebar === */
+    #sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    #sidebar .logo { padding: 16px 20px; font-size: 18px; font-weight: 700; border-bottom: 1px solid var(--border); }
+    #sidebar .logo span { color: var(--accent); }
+    #sidebar nav { flex: 1; padding: 8px; overflow-y: auto; }
+    #sidebar nav button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; background: none; border: none; color: var(--text-dim); font-size: 13px; border-radius: 6px; cursor: pointer; text-align: left; }
+    #sidebar nav button:hover { background: var(--surface2); color: var(--text); }
+    #sidebar nav button.active { background: var(--surface2); color: var(--accent); }
+    #sidebar .status-bar { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-dim); }
+    #sidebar .status-bar .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    #sidebar .status-bar .dot.green { background: var(--green); }
+    #sidebar .status-bar .dot.red { background: var(--red); }
 
-    header {
-      padding: 12px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    /* === Main === */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .panel.active { display: flex; }
+    .panel-header { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+    .panel-header .actions { display: flex; gap: 8px; }
+    .panel-header .actions button { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    .panel-header .actions button:hover { color: var(--text); border-color: var(--accent); }
+    .panel-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
 
-    header h1 {
-      font-size: 16px;
-      font-weight: 600;
-    }
+    /* === Chat Panel === */
+    #chat-messages { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    .msg { margin-bottom: 16px; max-width: 800px; }
+    .msg .meta { font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+    .msg .meta.user { color: var(--accent); }
+    .msg .meta.assistant { color: var(--green); }
+    .msg .body { line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+    .msg .body pre { background: var(--surface); padding: 12px; border-radius: 6px; overflow-x: auto; border: 1px solid var(--border); margin: 8px 0; }
+    .msg .body code { background: var(--surface); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+    .msg .tool-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin: 6px 0; font-size: 12px; }
+    .msg .tool-card .tool-name { color: var(--yellow); font-weight: 600; }
+    .msg .tool-card .tool-output { color: var(--text-dim); margin-top: 4px; max-height: 100px; overflow: hidden; }
+    .msg .thinking { color: var(--text-dim); font-style: italic; font-size: 13px; background: var(--surface); padding: 8px 12px; border-radius: 6px; margin: 6px 0; }
+    #chat-input { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; }
+    #chat-input textarea { flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 8px; font-family: inherit; font-size: 14px; resize: none; outline: none; min-height: 44px; max-height: 200px; }
+    #chat-input textarea:focus { border-color: var(--accent); }
+    #chat-input .btn-group { display: flex; gap: 4px; }
+    #chat-input button { background: var(--accent); color: #fff; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
+    #chat-input button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #chat-input button.abort { background: var(--red); }
 
-    header .status {
-      font-size: 12px;
-      color: var(--text-dim);
-    }
+    /* === List panels (agents, sessions, cron, etc.) === */
+    .list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--surface); }
+    .list-item .info { flex: 1; }
+    .list-item .info .name { font-weight: 600; font-size: 14px; }
+    .list-item .info .detail { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+    .list-item .badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+    .list-item .badge.online { color: var(--green); border-color: var(--green); }
 
-    header .status.connected { color: var(--green); }
-    header .status.error { color: var(--red); }
+    /* === Config panel === */
+    #config-editor { width: 100%; height: 100%; background: var(--surface); color: var(--text); border: none; padding: 16px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 13px; resize: none; outline: none; }
 
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-    }
+    /* === Logs panel === */
+    #log-output { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+    .log-info { color: var(--text-dim); }
+    .log-warn { color: var(--yellow); }
+    .log-error { color: var(--red); }
 
-    .message {
-      margin-bottom: 16px;
-      max-width: 800px;
-    }
-
-    .message .role {
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 4px;
-      color: var(--text-dim);
-    }
-
-    .message .role.user { color: var(--accent); }
-    .message .role.assistant { color: var(--green); }
-
-    .message .content {
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-
-    .message .tool-indicator {
-      font-size: 12px;
-      color: var(--yellow);
-      padding: 4px 0;
-    }
-
-    #input-area {
-      padding: 16px 20px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: 8px;
-    }
-
-    #input-area textarea {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 14px;
-      resize: none;
-      outline: none;
-      min-height: 44px;
-      max-height: 200px;
-    }
-
-    #input-area textarea:focus {
-      border-color: var(--accent);
-    }
-
-    #input-area button {
-      background: var(--accent);
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    #input-area button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 640px) {
-      #messages { padding: 12px; }
-      #input-area { padding: 12px; }
+    @media (max-width: 768px) {
+      #sidebar { width: 60px; } #sidebar nav button span { display: none; } #sidebar .logo { font-size: 14px; padding: 12px; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Clank</h1>
-    <span id="status" class="status">connecting...</span>
-  </header>
 
-  <div id="messages"></div>
+<div id="sidebar">
+  <div class="logo"><span>Clank</span></div>
+  <nav>
+    <button class="active" data-panel="chat">💬 <span>Chat</span></button>
+    <button data-panel="agents">🤖 <span>Agents</span></button>
+    <button data-panel="sessions">📋 <span>Sessions</span></button>
+    <button data-panel="config">⚙️ <span>Config</span></button>
+    <button data-panel="pipelines">🔗 <span>Pipelines</span></button>
+    <button data-panel="cron">⏰ <span>Cron Jobs</span></button>
+    <button data-panel="logs">📜 <span>Logs</span></button>
+    <button data-panel="channels">📡 <span>Channels</span></button>
+  </nav>
+  <div class="status-bar">
+    <span class="dot" id="status-dot"></span>
+    <span id="status-text">connecting...</span>
+  </div>
+</div>
 
-  <div id="input-area">
-    <textarea id="input" placeholder="Type a message..." rows="1"></textarea>
-    <button id="send" disabled>Send</button>
+<div id="main">
+  <!-- Chat Panel (P0) -->
+  <div id="panel-chat" class="panel active">
+    <div class="panel-header">
+      <span>Chat — <span id="chat-agent">default</span> <span id="chat-model" style="color:var(--text-dim);font-size:12px"></span></span>
+      <div class="actions">
+        <button onclick="newSession()">New Session</button>
+        <button onclick="resetSession()">Reset</button>
+      </div>
+    </div>
+    <div id="chat-messages"></div>
+    <div id="chat-input">
+      <textarea id="input" placeholder="Type a message..." rows="1"></textarea>
+      <div class="btn-group">
+        <button id="btn-send" onclick="sendMessage()" disabled>Send</button>
+        <button id="btn-abort" class="abort" onclick="abortMessage()" style="display:none">Stop</button>
+      </div>
+    </div>
   </div>
 
-  <script>
-    const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('input');
-    const sendBtn = document.getElementById('send');
-    const statusEl = document.getElementById('status');
+  <!-- Agents Panel (P0) -->
+  <div id="panel-agents" class="panel">
+    <div class="panel-header">Agents</div>
+    <div class="panel-body" id="agents-list"></div>
+  </div>
 
-    // Extract token from URL fragment
-    const token = window.location.hash.slice(1).split('=')[1] || '';
+  <!-- Sessions Panel (P0) -->
+  <div id="panel-sessions" class="panel">
+    <div class="panel-header">Sessions
+      <div class="actions"><button onclick="loadSessions()">Refresh</button></div>
+    </div>
+    <div class="panel-body" id="sessions-list"></div>
+  </div>
 
-    let ws = null;
-    let reqId = 0;
-    let currentAssistantEl = null;
+  <!-- Config Panel (P1) -->
+  <div id="panel-config" class="panel">
+    <div class="panel-header">Configuration
+      <div class="actions"><button onclick="saveConfig()">Save</button></div>
+    </div>
+    <textarea id="config-editor" spellcheck="false"></textarea>
+  </div>
 
-    function connect() {
-      const port = window.location.port || '18789';
-      ws = new WebSocket(`ws://${window.location.hostname}:${port}/ws`);
+  <!-- Pipelines Panel (P1) -->
+  <div id="panel-pipelines" class="panel">
+    <div class="panel-header">Pipelines</div>
+    <div class="panel-body" id="pipelines-list"><p style="color:var(--text-dim)">No pipelines configured. Define pipelines in config or through conversation.</p></div>
+  </div>
 
-      ws.onopen = () => {
-        // Send connect frame
-        ws.send(JSON.stringify({
-          type: 'req', id: ++reqId, method: 'connect',
-          params: { token, clientName: 'web', protocolVersion: 1 }
-        }));
-      };
+  <!-- Cron Panel (P1) -->
+  <div id="panel-cron" class="panel">
+    <div class="panel-header">Cron Jobs
+      <div class="actions"><button onclick="loadCron()">Refresh</button></div>
+    </div>
+    <div class="panel-body" id="cron-list"></div>
+  </div>
 
-      ws.onmessage = (e) => {
-        const frame = JSON.parse(e.data);
-        handleFrame(frame);
-      };
+  <!-- Logs Panel (P1) -->
+  <div id="panel-logs" class="panel">
+    <div class="panel-header">Logs
+      <div class="actions"><button onclick="clearLogs()">Clear</button></div>
+    </div>
+    <div class="panel-body"><pre id="log-output"></pre></div>
+  </div>
 
-      ws.onclose = () => {
-        statusEl.textContent = 'disconnected';
-        statusEl.className = 'status error';
-        sendBtn.disabled = true;
-        setTimeout(connect, 3000);
-      };
+  <!-- Channels Panel (P2) -->
+  <div id="panel-channels" class="panel">
+    <div class="panel-header">Channels</div>
+    <div class="panel-body" id="channels-list"></div>
+  </div>
+</div>
 
-      ws.onerror = () => {
-        statusEl.textContent = 'connection error';
-        statusEl.className = 'status error';
-      };
-    }
+<script>
+  // === State ===
+  let ws = null, reqId = 0, connected = false, streaming = false;
+  let currentAgent = 'default', currentSession = 'web:main';
+  let currentAssistantEl = null;
+  const token = location.hash.slice(1).split('=')[1] || '';
 
-    function handleFrame(frame) {
-      if (frame.type === 'hello' || (frame.type === 'res' && frame.ok)) {
-        if (frame.type === 'hello' || frame.payload?.sessionKey) {
-          statusEl.textContent = 'connected';
-          statusEl.className = 'status connected';
-          sendBtn.disabled = false;
-        }
-      }
-
-      if (frame.type === 'event') {
-        switch (frame.event) {
-          case 'response-start':
-            currentAssistantEl = addMessage('assistant', '');
-            break;
-          case 'token':
-            if (currentAssistantEl) {
-              currentAssistantEl.querySelector('.content').textContent += frame.payload.content;
-              messagesEl.scrollTop = messagesEl.scrollHeight;
-            }
-            break;
-          case 'response-end':
-            // Re-render with markdown now that we have the full text
-            if (currentAssistantEl) {
-              const raw = currentAssistantEl.querySelector('.content').textContent;
-              currentAssistantEl.querySelector('.content').innerHTML = renderMarkdown(raw);
-            }
-            currentAssistantEl = null;
-            break;
-          case 'tool-start':
-            addToolIndicator(`Running: ${frame.payload.name}`);
-            break;
-          case 'tool-result':
-            addToolIndicator(`${frame.payload.success ? 'Done' : 'Error'}: ${frame.payload.name}`);
-            break;
-        }
-      }
-    }
-
-    function addMessage(role, text, useMarkdown = false) {
-      const div = document.createElement('div');
-      div.className = 'message';
-      const rendered = useMarkdown ? renderMarkdown(text) : escapeHtml(text);
-      div.innerHTML = `<div class="role ${role}">${role}</div><div class="content">${rendered}</div>`;
-      messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      return div;
-    }
-
-    function addToolIndicator(text) {
-      const div = document.createElement('div');
-      div.className = 'message';
-      div.innerHTML = `<div class="tool-indicator">${escapeHtml(text)}</div>`;
-      messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    /** Basic markdown rendering — code blocks, inline code, bold, italic */
-    function renderMarkdown(text) {
-      let html = escapeHtml(text);
-      // Code blocks: ```lang\ncode\n```
-      html = html.replace(/```(\w*)\n([\s\S]*?)```/g,
-        '<pre style="background:var(--surface);padding:12px;border-radius:6px;overflow-x:auto;border:1px solid var(--border)"><code>$2</code></pre>');
-      // Inline code: `code`
-      html = html.replace(/`([^`]+)`/g,
-        '<code style="background:var(--surface);padding:2px 6px;border-radius:3px;font-size:0.9em">$1</code>');
-      // Bold: **text**
-      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      // Italic: *text*
-      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-      // Line breaks
-      html = html.replace(/\n/g, '<br>');
-      return html;
-    }
-
-    function sendMessage() {
-      const text = inputEl.value.trim();
-      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-      addMessage('user', text);
-      ws.send(JSON.stringify({
-        type: 'req', id: ++reqId, method: 'sendMessage',
-        params: { text }
-      }));
-
-      inputEl.value = '';
-      inputEl.style.height = 'auto';
-    }
-
-    // Send on Enter (Shift+Enter for newline)
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+  // === Navigation ===
+  document.querySelectorAll('#sidebar nav button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#sidebar nav button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+      // Load data for panel
+      if (btn.dataset.panel === 'agents') loadAgents();
+      if (btn.dataset.panel === 'sessions') loadSessions();
+      if (btn.dataset.panel === 'config') loadConfig();
+      if (btn.dataset.panel === 'cron') loadCron();
     });
+  });
 
-    // Auto-resize textarea
-    inputEl.addEventListener('input', () => {
-      inputEl.style.height = 'auto';
-      inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+  // === WebSocket ===
+  function connect() {
+    const port = location.port || '18789';
+    ws = new WebSocket(`ws://${location.hostname}:${port}/ws`);
+    ws.onopen = () => ws.send(JSON.stringify({ type:'connect', params:{ auth:{token}, mode:'web', version:'0.1.0' }}));
+    ws.onmessage = e => handleFrame(JSON.parse(e.data));
+    ws.onclose = () => { setStatus(false); setTimeout(connect, 3000); };
+    ws.onerror = () => setStatus(false);
+  }
+
+  function setStatus(ok) {
+    connected = ok;
+    document.getElementById('status-dot').className = 'dot ' + (ok ? 'green' : 'red');
+    document.getElementById('status-text').textContent = ok ? 'connected' : 'disconnected';
+    document.getElementById('btn-send').disabled = !ok;
+  }
+
+  function rpc(method, params = {}) {
+    return new Promise((resolve, reject) => {
+      const id = ++reqId;
+      const handler = e => {
+        const f = JSON.parse(e.data);
+        if (f.type === 'res' && f.id === id) { ws.removeEventListener('message', handler); f.ok ? resolve(f.result) : reject(f.error); }
+      };
+      ws.addEventListener('message', handler);
+      ws.send(JSON.stringify({ type:'req', id, method, params }));
+      setTimeout(() => { ws.removeEventListener('message', handler); reject('timeout'); }, 30000);
     });
+  }
 
-    sendBtn.addEventListener('click', sendMessage);
+  // === Frame Handler ===
+  function handleFrame(f) {
+    if (f.type === 'hello') {
+      setStatus(true);
+      if (f.agents?.length) { currentAgent = f.agents[0].id; document.getElementById('chat-agent').textContent = f.agents[0].name; document.getElementById('chat-model').textContent = f.agents[0].model; }
+      return;
+    }
+    if (f.type === 'res' && f.ok && !streaming) return;
+    if (f.type !== 'event') return;
 
-    // Connect on load
-    connect();
-  </script>
+    switch (f.event) {
+      case 'chat.stream': case 'token':
+        if (!currentAssistantEl) currentAssistantEl = addMsg('assistant', '');
+        currentAssistantEl.querySelector('.body').textContent += (f.payload.text || f.payload.content || '');
+        scrollChat(); break;
+      case 'chat.thinking': case 'thinking':
+        if (currentAssistantEl) { let t = currentAssistantEl.querySelector('.thinking'); if (!t) { t = document.createElement('div'); t.className = 'thinking'; currentAssistantEl.insertBefore(t, currentAssistantEl.querySelector('.body')); } t.textContent += (f.payload.text || ''); }
+        break;
+      case 'chat.tool': case 'tool-start':
+        if (currentAssistantEl) { const c = document.createElement('div'); c.className = 'tool-card'; c.innerHTML = `<span class="tool-name">${esc(f.payload.name)}</span>`; currentAssistantEl.querySelector('.body').before(c); }
+        break;
+      case 'tool-result':
+        if (currentAssistantEl) { const cards = currentAssistantEl.querySelectorAll('.tool-card'); const last = cards[cards.length-1]; if (last) { const o = document.createElement('div'); o.className = 'tool-output'; o.textContent = (f.payload.summary || '').slice(0,200); last.appendChild(o); } }
+        break;
+      case 'chat.complete': case 'response-end': case 'turn-complete':
+        if (currentAssistantEl) { const raw = currentAssistantEl.querySelector('.body').textContent; currentAssistantEl.querySelector('.body').innerHTML = md(raw); }
+        currentAssistantEl = null; streaming = false; document.getElementById('btn-send').style.display = ''; document.getElementById('btn-abort').style.display = 'none';
+        break;
+      case 'chat.error': case 'error':
+        addMsg('system', 'Error: ' + (f.payload.message || f.payload.error || 'Unknown'));
+        streaming = false; document.getElementById('btn-send').style.display = ''; document.getElementById('btn-abort').style.display = 'none';
+        break;
+      case 'log.entry':
+        appendLog(f.payload); break;
+    }
+  }
+
+  // === Chat ===
+  function sendMessage() {
+    const text = document.getElementById('input').value.trim();
+    if (!text || !ws) return;
+    addMsg('user', text); streaming = true; currentAssistantEl = null;
+    document.getElementById('btn-send').style.display = 'none'; document.getElementById('btn-abort').style.display = '';
+    ws.send(JSON.stringify({ type:'req', id:++reqId, method:'chat.send', params:{ message:text, sessionKey:currentSession, agent:currentAgent }}));
+    document.getElementById('input').value = ''; autoResize();
+  }
+  function abortMessage() { ws?.send(JSON.stringify({ type:'req', id:++reqId, method:'chat.abort', params:{} })); }
+  function newSession() { currentSession = 'web:' + Date.now(); document.getElementById('chat-messages').innerHTML = ''; }
+  function resetSession() { rpc('session.reset', { sessionKey: currentSession }).then(() => { document.getElementById('chat-messages').innerHTML = ''; }); }
+
+  function addMsg(role, text) {
+    const d = document.createElement('div'); d.className = 'msg';
+    d.innerHTML = `<div class="meta ${role}">${role}</div><div class="body">${role === 'user' ? esc(text) : ''}</div>`;
+    document.getElementById('chat-messages').appendChild(d); scrollChat(); return d;
+  }
+  function scrollChat() { const c = document.getElementById('chat-messages'); c.scrollTop = c.scrollHeight; }
+
+  // === Agents Panel ===
+  async function loadAgents() {
+    try {
+      const agents = await rpc('agent.list');
+      const el = document.getElementById('agents-list');
+      if (!agents?.length) { el.innerHTML = '<p style="color:var(--text-dim)">No custom agents. Using default agent.</p>'; return; }
+      el.innerHTML = agents.map(a => `<div class="list-item"><div class="info"><div class="name">${esc(a.name)}</div><div class="detail">${esc(a.model)}</div></div><span class="badge online">${a.status}</span></div>`).join('');
+    } catch {}
+  }
+
+  // === Sessions Panel ===
+  async function loadSessions() {
+    try {
+      const sessions = await rpc('session.list');
+      const el = document.getElementById('sessions-list');
+      if (!sessions?.length) { el.innerHTML = '<p style="color:var(--text-dim)">No sessions yet.</p>'; return; }
+      el.innerHTML = sessions.slice(0,50).map(s => `<div class="list-item" onclick="switchSession('${esc(s.normalizedKey || s.key)}')"><div class="info"><div class="name">${esc(s.label || s.normalizedKey || s.key)}</div><div class="detail">${esc(s.normalizedKey || s.key)} · ${new Date(s.updatedAt).toLocaleString()}</div></div><span class="badge">${esc(s.agentId || 'default')}</span></div>`).join('');
+    } catch {}
+  }
+  function switchSession(key) { currentSession = key; document.getElementById('chat-messages').innerHTML = ''; document.querySelectorAll('#sidebar nav button')[0].click(); }
+
+  // === Config Panel ===
+  async function loadConfig() {
+    try {
+      const cfg = await rpc('config.get');
+      document.getElementById('config-editor').value = JSON.stringify(cfg, null, 2);
+    } catch {}
+  }
+  async function saveConfig() {
+    try {
+      const text = document.getElementById('config-editor').value;
+      const parsed = JSON.parse(text);
+      // Save each top-level key
+      for (const [key, value] of Object.entries(parsed)) {
+        await rpc('config.set', { key, value });
+      }
+      appendLog({ level: 'info', message: 'Config saved' });
+    } catch (e) { appendLog({ level: 'error', message: 'Config save failed: ' + e }); }
+  }
+
+  // === Cron Panel ===
+  async function loadCron() {
+    try {
+      const jobs = await rpc('cron.list');
+      const el = document.getElementById('cron-list');
+      if (!jobs?.length) { el.innerHTML = '<p style="color:var(--text-dim)">No cron jobs. Create them through conversation or config.</p>'; return; }
+      el.innerHTML = jobs.map(j => `<div class="list-item"><div class="info"><div class="name">${esc(j.name)}</div><div class="detail">${esc(j.schedule)} · agent: ${esc(j.agentId)} · ${j.enabled ? 'enabled' : 'disabled'}</div></div><span class="badge">${j.lastStatus || 'pending'}</span></div>`).join('');
+    } catch {}
+  }
+
+  // === Logs Panel ===
+  function appendLog(entry) {
+    const el = document.getElementById('log-output');
+    const level = entry?.level || 'info';
+    const msg = entry?.message || JSON.stringify(entry);
+    const cls = level === 'error' ? 'log-error' : level === 'warn' ? 'log-warn' : 'log-info';
+    el.innerHTML += `<span class="${cls}">[${new Date().toLocaleTimeString()}] ${esc(msg)}</span>\n`;
+    el.parentElement.scrollTop = el.parentElement.scrollHeight;
+  }
+  function clearLogs() { document.getElementById('log-output').innerHTML = ''; }
+
+  // === Helpers ===
+  function esc(s) { const d = document.createElement('div'); d.textContent = String(s || ''); return d.innerHTML; }
+  function md(text) {
+    let h = esc(text);
+    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+    h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    h = h.replace(/\n/g, '<br>');
+    return h;
+  }
+
+  // Input handling
+  const inputEl = document.getElementById('input');
+  inputEl.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+  inputEl.addEventListener('input', autoResize);
+  function autoResize() { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px'; }
+
+  connect();
+</script>
 </body>
 </html>

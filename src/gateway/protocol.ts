@@ -57,8 +57,8 @@ export type Frame = ConnectParams | HelloFrame | RequestFrame | ResponseFrame | 
 /** Protocol version */
 export const PROTOCOL_VERSION = 1;
 
-/** Default gateway port */
-export const DEFAULT_PORT = 18789;
+/** Default gateway port (18790 — avoids collision with OpenClaw's 18789) */
+export const DEFAULT_PORT = 18790;
 
 // === RPC Methods ===
 

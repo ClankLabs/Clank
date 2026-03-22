@@ -105,7 +105,7 @@ export function getConfigPath(): string {
 export function defaultConfig(): ClankConfig {
   return {
     gateway: {
-      port: 18789,
+      port: 18790,
       bind: "loopback",
       auth: { mode: "token" },
     },

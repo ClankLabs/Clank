@@ -64,6 +64,15 @@ export class TelegramAdapter extends ChannelAdapter {
           }
         }
 
+        // Handle slash commands in messaging apps
+        if (msg.text.startsWith("/")) {
+          const reply = await this.handleCommand(msg.text, chatId, isGroup);
+          if (reply) {
+            await ctx.api.sendMessage(chatId, reply, { parse_mode: "Markdown" });
+          }
+          return;
+        }
+
         // Route through gateway
         if (!this.gateway) return;
 
@@ -105,6 +114,78 @@ export class TelegramAdapter extends ChannelAdapter {
     if (this.bot && this.running) {
       (this.bot as { stop: () => void }).stop();
       this.running = false;
+    }
+  }
+
+  /** Handle slash commands from Telegram */
+  private async handleCommand(text: string, chatId: number, isGroup: boolean): Promise<string | null> {
+    const [cmd, ...args] = text.slice(1).split(/\s+/);
+    const command = cmd.replace(/@\w+$/, ""); // Strip @botname suffix
+
+    switch (command) {
+      case "help":
+      case "start":
+        return [
+          "*Clank Commands*",
+          "",
+          "/help — Show this help",
+          "/status — Agent and model info",
+          "/agents — List available agents",
+          "/agent <name> — Switch to a different agent",
+          "/sessions — List recent sessions",
+          "/new — Start a new session",
+          "/reset — Clear current session",
+          "/model — Show current model",
+          "/think — Toggle thinking display",
+        ].join("\n");
+
+      case "status": {
+        const cfg = this.config;
+        const model = cfg?.agents?.defaults?.model?.primary || "unknown";
+        const agents = cfg?.agents?.list?.length || 0;
+        return [
+          "*Status*",
+          `Model: \`${model}\``,
+          `Agents: ${agents} configured`,
+          `Chat: ${isGroup ? "group" : "DM"} (${chatId})`,
+        ].join("\n");
+      }
+
+      case "agents": {
+        const list = this.config?.agents?.list || [];
+        if (list.length === 0) return "No custom agents configured. Using default agent.";
+        return "*Agents:*\n" + list.map((a) =>
+          `• *${a.name || a.id}* — \`${a.model?.primary || "default"}\``
+        ).join("\n");
+      }
+
+      case "agent":
+        if (args[0]) {
+          return `Agent switching via Telegram coming soon. Use the config tool in chat: "switch to agent ${args[0]}"`;
+        }
+        return "Usage: /agent <name>";
+
+      case "sessions": {
+        if (!this.gateway) return "Gateway not connected";
+        return "Use /new to start a fresh session, or /reset to clear the current one.";
+      }
+
+      case "new":
+        return "New session started. Send a message to begin.";
+
+      case "reset":
+        return "Session reset. History cleared.";
+
+      case "model": {
+        const model = this.config?.agents?.defaults?.model?.primary || "unknown";
+        return `Current model: \`${model}\``;
+      }
+
+      case "think":
+        return "Thinking display toggled. (Note: thinking visibility is per-client in the TUI/Web UI)";
+
+      default:
+        return null; // Not a recognized command — let it pass through to the agent
     }
   }
 

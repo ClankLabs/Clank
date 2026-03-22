@@ -195,10 +195,42 @@ daemon
     await daemonStatus();
   });
 
-// Default: if no subcommand, launch chat
+// clank tui — launch TUI (connects to gateway)
+program
+  .command("tui")
+  .description("Launch the terminal UI (connects to gateway)")
+  .option("--url <url>", "Gateway WebSocket URL")
+  .option("--token <token>", "Auth token")
+  .option("--session <key>", "Session to resume")
+  .action(async (opts) => {
+    const { runTui } = await import("./tui.js");
+    await runTui(opts);
+  });
+
+// clank dashboard — open Web UI in browser
+program
+  .command("dashboard")
+  .description("Open the Web UI in your browser")
+  .option("--no-open", "Don't auto-open browser")
+  .action(async (opts) => {
+    const { loadConfig } = await import("../config/index.js");
+    const config = await loadConfig();
+    const port = config.gateway.port || 18789;
+    const token = config.gateway.auth.token || "";
+    const url = `http://127.0.0.1:${port}/#token=${token}`;
+    console.log(`\n  Web UI: ${url}\n`);
+    if (opts.open !== false) {
+      const { platform } = await import("node:os");
+      const { exec } = await import("node:child_process");
+      const cmd = platform() === "win32" ? `start ${url}` : platform() === "darwin" ? `open ${url}` : `xdg-open ${url}`;
+      exec(cmd);
+    }
+  });
+
+// Default: if no subcommand, launch TUI (or direct chat if no gateway)
 program.action(async () => {
-  const { runChat } = await import("./chat.js");
-  await runChat({});
+  const { runTui } = await import("./tui.js");
+  await runTui({});
 });
 
 program.parse();

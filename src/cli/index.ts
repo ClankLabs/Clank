@@ -93,7 +93,8 @@ program
   .option("--non-interactive", "Non-interactive mode for scripting")
   .option("--accept-risk", "Accept security disclaimer")
   .action(async (opts) => {
-    console.log("Setup wizard — not yet implemented");
+    const { runSetup } = await import("./setup.js");
+    await runSetup(opts);
   });
 
 // clank fix — diagnostics & repair
@@ -103,7 +104,8 @@ program
   .option("--auto", "Attempt automatic repairs")
   .option("--check <system>", "Check a specific system")
   .action(async (opts) => {
-    console.log("Fix utility — not yet implemented");
+    const { runFix } = await import("./fix.js");
+    await runFix(opts);
   });
 
 // clank models — model management

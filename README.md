@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/ItsTrag1c/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.1.0-blue.svg" alt="Version" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
-  <a href="https://www.npmjs.com/package/clank"><img src="https://img.shields.io/npm/v/clank.svg" alt="npm" /></a>
+  <a href="https://www.npmjs.com/package/@tractorscorch/clank"><img src="https://img.shields.io/npm/v/@tractorscorch/clank.svg" alt="npm" /></a>
   <a href="https://github.com/ItsTrag1c/Clank/stargazers"><img src="https://img.shields.io/github/stars/ItsTrag1c/Clank.svg" alt="Stars" /></a>
 </p>
 
@@ -53,7 +53,7 @@ Clank is a personal AI gateway — **one daemon, many frontends**. It connects y
 ## Quick Start
 
 ```bash
-npm install -g clank
+npm install -g @tractorscorch/clank
 clank setup
 clank
 ```
@@ -157,7 +157,7 @@ See [SECURITY.md](SECURITY.md) for the full security model.
 |--|--|
 | **Website** | [clanksuite.dev](https://clanksuite.dev) |
 | **GitHub** | [ItsTrag1c/Clank](https://github.com/ItsTrag1c/Clank) |
-| **npm** | [npmjs.com/package/clank](https://www.npmjs.com/package/clank) |
+| **npm** | [npmjs.com/package/@tractorscorch/clank](https://www.npmjs.com/package/@tractorscorch/clank) |
 | **Twitter/X** | [@ClankSuite](https://x.com/ClankSuite) |
 | **Reddit** | [u/ClankSuite](https://reddit.com/u/ClankSuite) |
 | **Legacy** | [Clank-Legacy](https://github.com/ItsTrag1c/Clank-Legacy) (archived CLI v2.7.0 + Desktop v2.6.1) |

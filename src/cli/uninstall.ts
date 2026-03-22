@@ -78,7 +78,7 @@ export async function runUninstall(opts: { yes?: boolean }): Promise<void> {
   console.log(dim("  Uninstalling npm package..."));
   try {
     const { execSync } = await import("node:child_process");
-    execSync("npm uninstall -g clank", { stdio: "ignore" });
+    execSync("npm uninstall -g @tractorscorch/clank", { stdio: "ignore" });
     console.log(green("  npm package uninstalled"));
   } catch {
     console.log(dim("  Could not uninstall npm package (may not be globally installed)"));

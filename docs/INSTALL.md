@@ -30,7 +30,7 @@ Clank also auto-detects LM Studio, llama.cpp, and vLLM if they're running.
 ## Install Clank
 
 ```bash
-npm install -g clank
+npm install -g @tractorscorch/clank
 ```
 
 Verify the installation:
@@ -272,7 +272,7 @@ rm -rf ~/.clank          # macOS/Linux
 rd /s "%APPDATA%\Clank"  # Windows
 
 # Remove package
-npm uninstall -g clank
+npm uninstall -g @tractorscorch/clank
 ```
 
 ---

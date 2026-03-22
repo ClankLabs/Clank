@@ -330,6 +330,16 @@ program
     if (Object.keys(channels).length === 0) console.log("    (none configured)");
   });
 
+// clank uninstall — remove everything
+program
+  .command("uninstall")
+  .description("Remove Clank completely (config, data, service, package)")
+  .option("-y, --yes", "Skip confirmation prompt")
+  .action(async (opts) => {
+    const { runUninstall } = await import("./uninstall.js");
+    await runUninstall(opts);
+  });
+
 // Default: if no subcommand, ensure gateway is running then launch TUI
 program.action(async () => {
   const { gatewayStartBackground, isGatewayRunning } = await import("./gateway-cmd.js");

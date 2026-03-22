@@ -2,7 +2,7 @@ export { GatewayServer } from "./server.js";
 export {
   type Frame,
   type ConnectParams,
-  type HelloOk,
+  type HelloFrame,
   type RequestFrame,
   type ResponseFrame,
   type EventFrame,

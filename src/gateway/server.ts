@@ -34,7 +34,7 @@ import {
   type ResponseFrame,
   type EventFrame,
   type ConnectParams,
-  type HelloOk,
+  type HelloFrame,
   parseFrame,
   serializeFrame,
   PROTOCOL_VERSION,
@@ -306,40 +306,47 @@ export class GatewayServer {
 
   /** Handle client connection/auth */
   private async handleConnect(client: ClientConnection, frame: ConnectParams | RequestFrame): Promise<void> {
-    const params = frame.type === "connect" ? frame : (frame as RequestFrame).params as unknown as ConnectParams;
+    const params = frame.type === "connect"
+      ? (frame as ConnectParams).params
+      : (frame as RequestFrame).params as ConnectParams["params"];
     const reqId = frame.type === "req" ? (frame as RequestFrame).id : 0;
 
     // Auth check
     const expectedToken = this.config.gateway.auth.token;
-    if (expectedToken && params?.token !== expectedToken) {
-      const hello: HelloOk = {
-        type: "hello",
-        ok: false,
-        version: "0.1.0",
-        agentId: "",
-        sessionKey: "",
-        error: "Invalid token",
-      };
-      client.ws.send(serializeFrame(hello));
-      if (reqId) this.sendResponse(client, reqId, false, undefined, "Invalid token");
+    const providedToken = params?.auth?.token;
+    if (expectedToken && this.config.gateway.auth.mode !== "none" && providedToken !== expectedToken) {
+      client.ws.send(serializeFrame({
+        type: "res", id: reqId, ok: false, error: "Invalid token",
+      } as ResponseFrame));
       return;
     }
 
-    client.clientName = (params as ConnectParams)?.clientName || "unknown";
+    client.clientName = params?.mode || "unknown";
     client.authenticated = true;
 
     // Resolve default agent and session
-    const agentId = "default";
+    const agentId = this.config.agents.list[0]?.id || "default";
     const sessionKey = `${client.clientName}:main`;
     client.agentId = agentId;
     client.sessionKey = sessionKey;
 
-    const hello: HelloOk = {
+    // Send hello with available agents and recent sessions
+    const hello: HelloFrame = {
       type: "hello",
-      ok: true,
+      protocol: PROTOCOL_VERSION,
       version: "0.1.0",
-      agentId,
-      sessionKey,
+      agents: this.config.agents.list.map((a) => ({
+        id: a.id,
+        name: a.name || a.id,
+        model: a.model?.primary || this.config.agents.defaults.model.primary,
+        status: "online",
+      })),
+      sessions: this.sessionStore.list().slice(0, 50).map((s) => ({
+        key: s.normalizedKey,
+        label: s.label,
+        agentId: s.agentId || "default",
+        updatedAt: s.updatedAt,
+      })),
     };
     client.ws.send(serializeFrame(hello));
     if (reqId) this.sendResponse(client, reqId, true, { agentId, sessionKey });
@@ -347,35 +354,167 @@ export class GatewayServer {
 
   /** Handle a request frame */
   private async handleRequest(client: ClientConnection, frame: RequestFrame): Promise<void> {
-    switch (frame.method) {
-      case "sendMessage":
-        await this.handleSendMessage(client, frame);
-        break;
+    try {
+      switch (frame.method) {
+        // === Chat ===
+        case "chat.send":
+        case "sendMessage":
+          await this.handleSendMessage(client, frame);
+          break;
 
-      case "cancel":
-        this.handleCancel(client);
-        this.sendResponse(client, frame.id, true);
-        break;
+        case "chat.abort":
+        case "cancel":
+          this.handleCancel(client);
+          this.sendResponse(client, frame.id, true);
+          break;
 
-      case "sessions/list":
-        this.sendResponse(client, frame.id, true, this.sessionStore.list());
-        break;
+        case "chat.history": {
+          const historyKey = (frame.params?.sessionKey as string) || client.sessionKey;
+          const entry = this.sessionStore.list().find((s) => s.normalizedKey === historyKey);
+          const messages = entry ? await this.sessionStore.loadMessages(entry.id) : [];
+          const limit = Number(frame.params?.limit) || 200;
+          this.sendResponse(client, frame.id, true, messages.slice(-limit));
+          break;
+        }
 
-      case "sessions/reset":
-        await this.sessionStore.reset(client.sessionKey);
-        const engine = this.engines.get(client.sessionKey);
-        if (engine) engine.getContextEngine().clear();
-        this.sendResponse(client, frame.id, true);
-        break;
+        // === Sessions ===
+        case "session.list":
+          this.sendResponse(client, frame.id, true, this.sessionStore.list());
+          break;
 
-      case "sessions/delete":
-        const key = (frame.params?.sessionKey as string) || client.sessionKey;
-        await this.sessionStore.delete(key);
-        this.sendResponse(client, frame.id, true);
-        break;
+        case "session.delete": {
+          const delKey = (frame.params?.sessionKey as string) || client.sessionKey;
+          await this.sessionStore.delete(delKey);
+          this.sendResponse(client, frame.id, true);
+          break;
+        }
 
-      default:
-        this.sendResponse(client, frame.id, false, undefined, `Unknown method: ${frame.method}`);
+        case "session.reset": {
+          const resetKey = (frame.params?.sessionKey as string) || client.sessionKey;
+          await this.sessionStore.reset(resetKey);
+          const eng = this.engines.get(resetKey);
+          if (eng) eng.getContextEngine().clear();
+          this.sendResponse(client, frame.id, true);
+          break;
+        }
+
+        // === Agents ===
+        case "agent.list":
+          this.sendResponse(client, frame.id, true, this.config.agents.list.map((a) => ({
+            id: a.id,
+            name: a.name || a.id,
+            model: a.model?.primary || this.config.agents.defaults.model.primary,
+            status: "online",
+          })));
+          break;
+
+        case "agent.status": {
+          const aid = frame.params?.agentId as string;
+          const agentCfg = this.config.agents.list.find((a) => a.id === aid);
+          this.sendResponse(client, frame.id, true, agentCfg ? {
+            id: agentCfg.id,
+            name: agentCfg.name,
+            model: agentCfg.model?.primary || this.config.agents.defaults.model.primary,
+            status: "online",
+          } : null);
+          break;
+        }
+
+        // === Config ===
+        case "config.get": {
+          const section = frame.params?.section as string;
+          if (section) {
+            this.sendResponse(client, frame.id, true, (this.config as unknown as Record<string, unknown>)[section]);
+          } else {
+            // Return config without sensitive fields
+            const safe = { ...this.config };
+            this.sendResponse(client, frame.id, true, safe);
+          }
+          break;
+        }
+
+        case "config.set": {
+          const { loadConfig, saveConfig } = await import("../config/index.js");
+          const cfg = await loadConfig();
+          const key = frame.params?.key as string;
+          const value = frame.params?.value;
+          if (key && value !== undefined) {
+            const keys = key.split(".");
+            let target: Record<string, unknown> = cfg as unknown as Record<string, unknown>;
+            for (let i = 0; i < keys.length - 1; i++) {
+              if (!target[keys[i]]) target[keys[i]] = {};
+              target = target[keys[i]] as Record<string, unknown>;
+            }
+            target[keys[keys.length - 1]] = value;
+            await saveConfig(cfg);
+            this.config = cfg;
+          }
+          this.sendResponse(client, frame.id, true);
+          break;
+        }
+
+        // === Pipelines ===
+        case "pipeline.list":
+          this.sendResponse(client, frame.id, true, []); // TODO: wire pipeline runner
+          break;
+
+        case "pipeline.run":
+          this.sendResponse(client, frame.id, false, undefined, "Pipeline execution via UI coming soon");
+          break;
+
+        case "pipeline.status":
+        case "pipeline.abort":
+          this.sendResponse(client, frame.id, true, null);
+          break;
+
+        // === Cron ===
+        case "cron.list":
+          this.sendResponse(client, frame.id, true, this.cronScheduler.listJobs());
+          break;
+
+        case "cron.create": {
+          const job = await this.cronScheduler.addJob({
+            name: (frame.params?.name as string) || "Unnamed",
+            schedule: (frame.params?.schedule as string) || "1h",
+            agentId: (frame.params?.agentId as string) || "default",
+            prompt: (frame.params?.prompt as string) || "",
+          });
+          this.sendResponse(client, frame.id, true, job);
+          break;
+        }
+
+        case "cron.delete":
+          await this.cronScheduler.removeJob(frame.params?.jobId as string);
+          this.sendResponse(client, frame.id, true);
+          break;
+
+        case "cron.trigger": {
+          const triggerJob = this.cronScheduler.listJobs().find((j) => j.id === frame.params?.jobId);
+          if (triggerJob) {
+            const cronEngine = await this.getOrCreateEngine(`cron:${triggerJob.id}`, triggerJob.agentId, "cron");
+            cronEngine.sendMessage(triggerJob.prompt); // Fire and forget
+            this.sendResponse(client, frame.id, true);
+          } else {
+            this.sendResponse(client, frame.id, false, undefined, "Job not found");
+          }
+          break;
+        }
+
+        // === Logs ===
+        case "log.tail":
+          // TODO: implement log streaming
+          this.sendResponse(client, frame.id, true, { subscribed: true });
+          break;
+
+        case "log.query":
+          this.sendResponse(client, frame.id, true, []);
+          break;
+
+        default:
+          this.sendResponse(client, frame.id, false, undefined, `Unknown method: ${frame.method}`);
+      }
+    } catch (err) {
+      this.sendResponse(client, frame.id, false, undefined, err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -516,8 +655,8 @@ export class GatewayServer {
   }
 
   /** Send a response frame to a client */
-  private sendResponse(client: ClientConnection, id: number | string, ok: boolean, payload?: unknown, error?: string): void {
-    const frame: ResponseFrame = { type: "res", id, ok, payload, error };
+  private sendResponse(client: ClientConnection, id: number | string, ok: boolean, result?: unknown, error?: string): void {
+    const frame: ResponseFrame = { type: "res", id, ok, result, error };
     if (client.ws.readyState === WebSocket.OPEN) {
       client.ws.send(serializeFrame(frame));
     }

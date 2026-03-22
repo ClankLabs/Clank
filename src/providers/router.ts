@@ -105,15 +105,19 @@ export function createProvider(
 
     case "lmstudio":
     case "llamacpp":
-    case "vllm": {
+    case "vllm":
+    case "local": {
       // These are all OpenAI-compatible local servers
-      const baseUrls: Record<string, string> = {
+      const defaultUrls: Record<string, string> = {
         lmstudio: "http://127.0.0.1:1234",
         llamacpp: "http://127.0.0.1:8080",
         vllm: "http://127.0.0.1:8000",
+        local: "http://127.0.0.1:8080",
       };
+      // Allow custom base URL from config
+      const customUrl = (config as Record<string, unknown>)[provider] as { baseUrl?: string } | undefined;
       const p = new OpenAIProvider({
-        baseUrl: baseUrls[provider],
+        baseUrl: customUrl?.baseUrl || defaultUrls[provider] || defaultUrls.local,
         model,
         isLocal: true,
         maxResponseTokens: opts?.maxResponseTokens,
@@ -195,14 +199,17 @@ export async function detectLocalServers(): Promise<
     });
   }
 
-  // Check llama.cpp
-  const llamaCppModels = await OpenAIProvider.detect("http://127.0.0.1:8080");
-  if (llamaCppModels) {
-    servers.push({
-      provider: "llamacpp",
-      baseUrl: "http://127.0.0.1:8080",
-      models: llamaCppModels,
-    });
+  // Check llama.cpp (common ports)
+  for (const port of [8080, 14438]) {
+    const llamaCppModels = await OpenAIProvider.detect(`http://127.0.0.1:${port}`);
+    if (llamaCppModels) {
+      servers.push({
+        provider: "llamacpp",
+        baseUrl: `http://127.0.0.1:${port}`,
+        models: llamaCppModels,
+      });
+      break; // Found one, stop checking
+    }
   }
 
   // Check vLLM

@@ -191,6 +191,7 @@ export class OpenAIProvider extends BaseProvider {
               choices?: Array<{
                 delta?: {
                   content?: string | null;
+                  reasoning_content?: string | null;
                   tool_calls?: Array<{
                     index: number;
                     id?: string;
@@ -202,6 +203,9 @@ export class OpenAIProvider extends BaseProvider {
             };
 
             const choice = chunk.choices?.[0];
+            if (choice?.delta?.reasoning_content) {
+              yield { type: "thinking", content: choice.delta.reasoning_content };
+            }
             if (choice?.delta?.content) {
               yield { type: "text", content: choice.delta.content };
             }

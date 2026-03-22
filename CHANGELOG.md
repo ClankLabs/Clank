@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.1.0] — 2026-03-22
+
+### Security Hardening
+- **Bash tool:** expanded blocklist from 5 to 25 patterns — covers flag variations, shell-in-shell, encoded payloads, PowerShell, system damage commands
+- **Path traversal:** all file tools (read, write, edit, list, search, glob) now enforce workspace containment via `guardPath()` — blocks absolute paths and `../` traversal outside workspace
+- **Config redaction:** API keys, bot tokens, and auth tokens are stripped from config before exposing to LLM context or WebSocket clients
+- **Prototype pollution:** config.set RPC blocks `__proto__`, `constructor`, `prototype` keys
+- **SSRF protection:** web_fetch blocks localhost, cloud metadata endpoints (169.254.169.254), .internal/.local hostnames, file:// protocol
+- **Gateway auth:** auto-generates token on startup if mode is "token" but no token configured — prevents accidental open gateways
+- **Status endpoint:** /status now requires Bearer token authentication
+- **Tool confirmations:** gateway respects autoApprove config instead of blindly approving — 30s timeout defaults to deny
+- **.gitignore:** added config.json5, *.pem, *.key, credentials.json to prevent accidental secret commits
+
+### Bug Fixes
+- **Telegram bot not responding:** `bot.start()` was blocking (awaited) which prevented the gateway from finishing startup. Now runs non-blocking with `onStart` callback.
+- **Telegram allowFrom:** now matches both `@username` and numeric user IDs (was only matching numeric)
+- **grammY missing:** added as real dependency (was dynamic import that failed silently)
+- **Local server URL not saved:** setup wizard now saves detected server baseUrl for all local providers (was only saving Ollama)
+- **Port conflict:** default port changed to 18790 (was 18789, conflicted with OpenClaw/Claude Code)
+- **--web flag:** `clank chat --web` now auto-starts gateway and opens browser
+- **Gateway text/message param:** accepts both `message` and `text` fields from clients
+
+### Added
+- **TUI:** rich terminal UI with streaming, tool cards, thinking blocks, agent/session/model pickers, slash commands, shell integration (`!command`)
+- **Web Control UI:** 8-panel dashboard — Chat, Agents, Sessions, Config (JSON editor), Pipelines, Cron, Logs, Channels
+- **Telegram slash commands:** /help, /status, /agents, /agent, /sessions, /new, /reset, /model, /think
+- **CLI commands:** tui, dashboard, pipeline, cron, channels, uninstall
+- **Background gateway:** runs as detached process, Telegram/Discord stay alive while CLI/TUI/Web run on top
+- **Gateway singleton:** refuses to start if already running on the port
+- **Self-config tools (8):** config, manage_channel, manage_agent, manage_model, manage_session, manage_cron, gateway_status, send_message
+- **Google Gemini provider** with streaming and function calling
+- **Memory system:** TF-IDF cosine similarity with decay scoring, categorized storage
+- **Encryption:** AES-256-GCM for API keys, PIN hashing with timing-safe comparison
+- **Web search:** Brave Search API integration
+- **Config hot-reload:** watches config.json5 for changes
+- **`clank uninstall`:** removes all data, daemon, and npm package
+
+### Changed
+- Default command (`clank` with no args) starts gateway in background then launches TUI
+- `clank gateway start` now runs in background by default (`--foreground` for blocking mode)
+- `clank gateway restart` fully implemented (stop + start)
+- Protocol updated to v1 spec with 17 RPC methods and 11 event types
+
+---
+
 ## [1.0.0] — 2026-03-22
 
 Initial release — Clank Gateway foundation.

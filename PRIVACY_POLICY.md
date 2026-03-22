@@ -1,6 +1,6 @@
 # Clank Privacy Policy
 
-**Revision:** 1.0
+**Revision:** 1.1
 **Effective Date:** 2026-03-22
 **Last Updated:** 2026-03-22
 
@@ -43,15 +43,26 @@ API keys are encrypted at rest using AES-256-GCM with PBKDF2-derived keys (100,0
 ## Gateway Security
 
 - The gateway binds to localhost by default (not accessible from the network)
-- Token-based authentication for all client connections
+- Token-based authentication for all WebSocket client connections
+- Auto-generated auth token if none configured
+- `/status` endpoint requires authentication
 - No remote access unless explicitly configured
+
+## LLM Context Protection
+
+When using cloud LLM providers (Anthropic, OpenAI, Google), your prompts and agent responses are sent to the provider. However:
+
+- **API keys are never sent to the LLM** — config is redacted before injection into agent context
+- **Bot tokens are never sent to the LLM** — same redaction applies
+- **Local models (Ollama, llama.cpp, etc.) never leave your machine** — all processing is local
 
 ## Your Rights
 
-Your data is yours. Delete `~/.clank/` to remove everything. There is no cloud account, no remote backup, nothing to request deletion of.
+Your data is yours. Delete `~/.clank/` to remove everything, or run `clank uninstall` to remove all data, the system service, and the npm package. There is no cloud account, no remote backup, nothing to request deletion of.
 
 ## Changes
 
 | Rev | Date | Change |
 |-----|------|--------|
+| 1.1 | 2026-03-22 | Added LLM context protection, config redaction, uninstall command |
 | 1.0 | 2026-03-22 | Initial privacy policy for Clank Gateway |

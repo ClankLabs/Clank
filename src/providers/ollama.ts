@@ -147,14 +147,29 @@ export class OllamaProvider extends BaseProvider {
     tools: ToolDefinition[],
     signal?: AbortSignal,
   ): AsyncGenerator<StreamEvent> {
-    // Build OpenAI-compatible messages array
+    // Build OpenAI-compatible messages array.
+    // First, sanitize the message sequence — orphaned tool results (without
+    // a preceding assistant tool_call) cause 400 errors from the API.
+    const toolCallIds = new Set<string>();
+    for (const msg of messages) {
+      if (msg.role === "assistant" && msg.tool_calls) {
+        for (const tc of msg.tool_calls) toolCallIds.add(tc.id);
+      }
+    }
+    const sanitized = messages.filter((msg) => {
+      if (msg.role === "tool" && msg.tool_call_id && !toolCallIds.has(msg.tool_call_id)) {
+        return false; // Drop orphaned tool result
+      }
+      return true;
+    });
+
     const apiMessages: Array<Record<string, unknown>> = [];
 
     if (systemPrompt) {
       apiMessages.push({ role: "system", content: systemPrompt });
     }
 
-    for (const msg of messages) {
+    for (const msg of sanitized) {
       if (msg.role === "tool") {
         apiMessages.push({
           role: "tool",

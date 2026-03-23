@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.7] — 2026-03-22
+
+### Fixed
+- **Tool calling crashes gateway** — context compaction could split tool call / tool result message pairs, sending orphaned messages to Ollama which returns 400 errors and corrupts the session permanently; compaction now drops complete pairs together
+- **Orphaned tool result safety net** — Ollama provider now filters out orphaned tool results before sending to the API, preventing 400 errors even if compaction misses a pair
+
+---
+
 ## [1.4.6] — 2026-03-22
 
 ### Fixed

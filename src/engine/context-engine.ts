@@ -271,6 +271,8 @@ export class ContextEngine {
 
   /**
    * Tier 1 aggressive: drop oldest messages when regular compaction isn't enough.
+   * Drops tool call + tool result pairs together to avoid orphaned messages
+   * that cause API errors (Ollama/OpenAI require matching pairs).
    */
   private compactTier1Aggressive(): void {
     const protectedCount = 6;
@@ -280,7 +282,47 @@ export class ContextEngine {
       // Find the first non-system message to drop
       const dropIdx = this.messages.findIndex((m) => m.role !== "system");
       if (dropIdx === -1 || dropIdx >= this.messages.length - protectedCount) break;
-      this.messages.splice(dropIdx, 1);
+
+      const msg = this.messages[dropIdx];
+
+      // If this is an assistant message with tool_calls, also drop the
+      // following tool result message(s) to keep pairs intact
+      if (msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0) {
+        const toolCallIds = new Set(msg.tool_calls.map((tc) => tc.id));
+        this.messages.splice(dropIdx, 1);
+        // Remove orphaned tool results (scan forward from dropIdx)
+        for (let i = dropIdx; i < this.messages.length; ) {
+          if (this.messages[i].role === "tool" && toolCallIds.has(this.messages[i].tool_call_id || "")) {
+            this.messages.splice(i, 1);
+          } else {
+            break; // Tool results are consecutive after the assistant message
+          }
+        }
+      } else if (msg.role === "tool" && msg.tool_call_id) {
+        // Orphaned tool result — find and drop its parent assistant message too
+        const parentIdx = this.messages.findLastIndex(
+          (m, idx) => idx < dropIdx && m.role === "assistant" && m.tool_calls?.some((tc) => tc.id === msg.tool_call_id)
+        );
+        if (parentIdx >= 0) {
+          // Drop the parent and ALL its tool results
+          const parent = this.messages[parentIdx];
+          const parentToolIds = new Set(parent.tool_calls!.map((tc) => tc.id));
+          this.messages.splice(parentIdx, 1);
+          // Re-scan and drop orphaned results
+          for (let i = parentIdx; i < this.messages.length; ) {
+            if (this.messages[i].role === "tool" && parentToolIds.has(this.messages[i].tool_call_id || "")) {
+              this.messages.splice(i, 1);
+            } else {
+              break;
+            }
+          }
+        } else {
+          // No parent found — just drop the orphan
+          this.messages.splice(dropIdx, 1);
+        }
+      } else {
+        this.messages.splice(dropIdx, 1);
+      }
     }
   }
 
@@ -298,8 +340,14 @@ export class ContextEngine {
     const protectedCount = 6;
     if (this.messages.length <= protectedCount + 2) return;
 
-    // Take the older half of the conversation for summarization
-    const cutoff = Math.max(2, this.messages.length - protectedCount - 2);
+    // Take the older half of the conversation for summarization.
+    // Adjust cutoff to avoid splitting a tool call / tool result pair —
+    // if the message at cutoff is a tool result, move cutoff forward to
+    // include it in the summarized block (keep the pair together).
+    let cutoff = Math.max(2, this.messages.length - protectedCount - 2);
+    while (cutoff < this.messages.length && this.messages[cutoff].role === "tool") {
+      cutoff++;
+    }
     const toSummarize = this.messages.slice(0, cutoff);
     const toKeep = this.messages.slice(cutoff);
 

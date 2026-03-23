@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ItsTrag1c/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.5.9-blue.svg" alt="Version" /></a>
+  <a href="https://github.com/ItsTrag1c/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.5.10-blue.svg" alt="Version" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
   <a href="https://www.npmjs.com/package/@tractorscorch/clank"><img src="https://img.shields.io/npm/v/@tractorscorch/clank.svg" alt="npm" /></a>
   <a href="https://github.com/ItsTrag1c/Clank/stargazers"><img src="https://img.shields.io/github/stars/ItsTrag1c/Clank.svg" alt="Stars" /></a>
@@ -75,7 +75,7 @@ That's it. Setup auto-detects your local models, configures the gateway, and get
 | Platform | Download |
 |----------|----------|
 | **npm** (all platforms) | `npm install -g @tractorscorch/clank` |
-| **macOS** (Apple Silicon) | [Clank_1.5.9_macos](https://github.com/ItsTrag1c/Clank/releases/latest/download/Clank_1.5.9_macos) |
+| **macOS** (Apple Silicon) | [Clank_1.5.10_macos](https://github.com/ItsTrag1c/Clank/releases/latest/download/Clank_1.5.10_macos) |
 
 ## Security Notice
 

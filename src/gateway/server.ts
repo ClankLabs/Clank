@@ -275,6 +275,16 @@ export class GatewayServer {
       listeners.push(["error", fn]);
     }
 
+    // Auto-approve tool confirmations for adapter channels (Telegram,
+    // Discord, etc.). These channels have no interactive confirmation UI,
+    // so blocking on confirmation means the engine hangs forever.
+    const confirmFn = (data: unknown) => {
+      const { resolve } = data as { resolve: (v: boolean | "always") => void };
+      resolve("always");
+    };
+    engine.on("confirm-needed", confirmFn);
+    listeners.push(["confirm-needed", confirmFn]);
+
     try {
       console.log(`  Streaming: sending message to engine (session: ${sessionKey})`);
       const result = await engine.sendMessage(text);
@@ -332,7 +342,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.5.9",
+        version: "1.5.10",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -468,7 +478,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.5.9",
+      version: "1.5.10",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,

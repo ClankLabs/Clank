@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.5.10] — 2026-03-23
+
+### Fixed
+- **Telegram/Discord hangs forever when agent uses tools** — medium/high safety tools (bash, write_file, edit_file) require user confirmation, but the adapter streaming path had no confirmation handler. The engine would emit `confirm-needed`, nobody would respond, and the agent hung indefinitely with Telegram stuck on "typing". Now auto-approves all tool confirmations for non-interactive channels
+
+---
+
 ## [1.5.9] — 2026-03-23
 
 ### Changed

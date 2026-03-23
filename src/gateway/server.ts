@@ -81,6 +81,11 @@ export class GatewayServer {
 
   /** Start the gateway server */
   async start(): Promise<void> {
+    // Catch unhandled rejections so the gateway logs errors instead of dying silently
+    process.on("unhandledRejection", (err) => {
+      console.error(`  Unhandled rejection: ${err instanceof Error ? err.message : err}`);
+    });
+
     // Ensure auth token exists — generate one if missing
     if (this.config.gateway.auth.mode === "token" && !this.config.gateway.auth.token) {
       const { randomBytes } = await import("node:crypto");
@@ -306,7 +311,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.4.4",
+        version: "1.4.5",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -377,7 +382,11 @@ export class GatewayServer {
 
     ws.on("message", (data) => {
       const frame = parseFrame(data.toString());
-      if (frame) this.handleFrame(client, frame);
+      if (frame) {
+        this.handleFrame(client, frame).catch((err) => {
+          console.error(`  Frame handler error: ${err instanceof Error ? err.message : err}`);
+        });
+      }
     });
 
     ws.on("close", () => {
@@ -438,7 +447,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.4.4",
+      version: "1.4.5",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,

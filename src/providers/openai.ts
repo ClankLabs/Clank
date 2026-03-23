@@ -139,11 +139,13 @@ export class OpenAIProvider extends BaseProvider {
       headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
+    const effectiveSignal = signal || AbortSignal.timeout(90_000);
+
     const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
-      signal,
+      signal: effectiveSignal,
     });
 
     if (!res.ok) {

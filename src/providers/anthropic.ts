@@ -129,6 +129,8 @@ export class AnthropicProvider extends BaseProvider {
       body.tools = this.formatTools(tools);
     }
 
+    const effectiveSignal = signal || AbortSignal.timeout(90_000);
+
     const res = await fetch(`${this.baseUrl}/v1/messages`, {
       method: "POST",
       headers: {
@@ -137,7 +139,7 @@ export class AnthropicProvider extends BaseProvider {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify(body),
-      signal,
+      signal: effectiveSignal,
     });
 
     if (!res.ok) {

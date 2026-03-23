@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.5] — 2026-03-22
+
+### Fixed
+- **Gateway unresponsive after messages** — WebSocket frame handler was not awaited, causing unhandled promise rejections that silently killed the gateway process
+- **Added `unhandledRejection` handler** — gateway now logs rejected promises instead of dying silently
+- **Provider timeout fallback** — all providers (Ollama, Anthropic, OpenAI, Google) now have a fallback timeout (120s local, 90s cloud) if no abort signal is provided, preventing indefinite hangs when a model is unresponsive
+
+---
+
 ## [1.4.4] — 2026-03-22
 
 ### Fixed

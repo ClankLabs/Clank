@@ -127,11 +127,13 @@ export class GoogleProvider extends BaseProvider {
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:streamGenerateContent?key=${this.apiKey}&alt=sse`;
 
+    const effectiveSignal = signal || AbortSignal.timeout(90_000);
+
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal,
+      signal: effectiveSignal,
     });
 
     if (!res.ok) {

@@ -372,6 +372,7 @@ export class AgentEngine extends EventEmitter {
           // Validate
           const toolCtx: ToolContext = {
             projectRoot: this.identity.workspace,
+            allowExternal: true,
             autoApprove: this.autoApprove,
             agentId: this.identity.id,
             signal,

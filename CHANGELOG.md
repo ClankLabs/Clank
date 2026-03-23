@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.5.9] — 2026-03-23
+
+### Changed
+- **Workspace defaults to current directory** — the agent's workspace is now the directory you run `clank` from, not a hidden `%APPDATA%/Clank/workspace` folder. This means the agent works with your actual project files out of the box
+- **Full file system access** — the path guard no longer blocks reads/writes outside the workspace. Clank is a dev tool and needs to access the full system. Added security notice to README recommending dedicated hardware
+
+### Fixed
+- **Telegram `/new` and `/reset` were no-ops** — these commands returned a "session started" message but never actually reset the session. The model kept its full conversation history. Now properly clears session store, context engine, and destroys the old engine instance
+- **Security notice added to README** — recommends running Clank on dedicated hardware since it gives agents full system access
+
+---
+
 ## [1.5.8] — 2026-03-23
 
 ### Added

@@ -144,7 +144,7 @@ export function defaultConfig(): ClankConfig {
     agents: {
       defaults: {
         model: { primary: "ollama/qwen3.5" },
-        workspace: join(getConfigDir(), "workspace"),
+        workspace: process.cwd(),
         toolTier: "auto",
         temperature: 0.7,
       },

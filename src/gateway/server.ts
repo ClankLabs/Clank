@@ -167,6 +167,21 @@ export class GatewayServer {
   }
 
   /**
+   * Reset a session — clear its history and context.
+   * Used by channel adapters (Telegram /new, /reset commands).
+   */
+  async resetSession(context: RouteContext): Promise<void> {
+    const sessionKey = deriveSessionKey(context);
+    await this.sessionStore.reset(sessionKey);
+    const engine = this.engines.get(sessionKey);
+    if (engine) {
+      engine.getContextEngine().clear();
+      engine.destroy();
+      this.engines.delete(sessionKey);
+    }
+  }
+
+  /**
    * Handle an inbound message from any channel adapter.
    * This is the main entry point for all non-WebSocket messages.
    */
@@ -317,7 +332,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.5.8",
+        version: "1.5.9",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -453,7 +468,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.5.8",
+      version: "1.5.9",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,

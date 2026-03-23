@@ -468,10 +468,17 @@ export class TelegramAdapter extends ChannelAdapter {
       }
 
       case "new":
-        return "New session started. Send a message to begin.";
-
       case "reset":
-        return "Session reset. History cleared.";
+        if (this.gateway) {
+          await this.gateway.resetSession({
+            channel: "telegram",
+            peerId: chatId,
+            peerKind: isGroup ? "group" : "dm",
+          });
+        }
+        return command === "new"
+          ? "New session started. Send a message to begin."
+          : "Session reset. History cleared.";
 
       case "model": {
         const model = this.config?.agents?.defaults?.model?.primary || "unknown";

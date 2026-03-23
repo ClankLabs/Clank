@@ -75,7 +75,7 @@ That's it. Setup auto-detects your local models, configures the gateway, and get
 | Platform | Download |
 |----------|----------|
 | **npm** (all platforms) | `npm install -g @tractorscorch/clank` |
-| **macOS** (Apple Silicon) | [Clank_1.4.1_macos](https://github.com/ItsTrag1c/Clank/releases/latest/download/Clank_1.4.1_macos) |
+| **macOS** (Apple Silicon) | [Clank_1.4.2_macos](https://github.com/ItsTrag1c/Clank/releases/latest/download/Clank_1.4.2_macos) |
 
 ## Features
 

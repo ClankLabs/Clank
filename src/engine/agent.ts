@@ -257,7 +257,13 @@ export class AgentEngine extends EventEmitter {
             streamSuccess = true;
             break; // Success — exit retry loop
           } catch (streamErr) {
-            if (attempt === 0 && !signal.aborted) {
+            // Don't retry timeouts or aborts — the model is unresponsive, retrying wastes time
+            const isTimeout = streamErr instanceof Error && (
+              streamErr.name === "TimeoutError" ||
+              streamErr.name === "AbortError" ||
+              streamErr.message.includes("timed out")
+            );
+            if (attempt === 0 && !signal.aborted && !isTimeout) {
               // First failure — retry once after brief pause
               this.emit("error", {
                 message: `Model connection failed, retrying... (${streamErr instanceof Error ? streamErr.message : "unknown"})`,
@@ -266,7 +272,7 @@ export class AgentEngine extends EventEmitter {
               await new Promise((r) => setTimeout(r, 2000));
               continue;
             }
-            throw streamErr; // Second failure — propagate
+            throw streamErr; // Timeout, abort, or second failure — propagate
           }
         } // end retry loop
 

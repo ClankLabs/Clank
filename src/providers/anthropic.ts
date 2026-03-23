@@ -129,7 +129,10 @@ export class AnthropicProvider extends BaseProvider {
       body.tools = this.formatTools(tools);
     }
 
-    const effectiveSignal = signal || AbortSignal.timeout(90_000);
+    const timeoutSignal = AbortSignal.timeout(90_000);
+    const effectiveSignal = signal
+      ? AbortSignal.any([signal, timeoutSignal])
+      : timeoutSignal;
 
     const res = await fetch(`${this.baseUrl}/v1/messages`, {
       method: "POST",

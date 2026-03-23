@@ -127,7 +127,10 @@ export class GoogleProvider extends BaseProvider {
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:streamGenerateContent?key=${this.apiKey}&alt=sse`;
 
-    const effectiveSignal = signal || AbortSignal.timeout(90_000);
+    const timeoutSignal = AbortSignal.timeout(90_000);
+    const effectiveSignal = signal
+      ? AbortSignal.any([signal, timeoutSignal])
+      : timeoutSignal;
 
     const res = await fetch(url, {
       method: "POST",

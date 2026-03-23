@@ -204,9 +204,13 @@ export class OllamaProvider extends BaseProvider {
       body.max_tokens = this.maxResponseTokens;
     }
 
-    // Use the caller's abort signal if provided, otherwise apply a 120s timeout
-    // so the gateway doesn't hang forever if the model is unresponsive
-    const effectiveSignal = signal || AbortSignal.timeout(120_000);
+    // Combine the caller's abort signal with a 120s timeout so the gateway
+    // doesn't hang forever if the local model is unresponsive or OOM.
+    // AbortSignal.any() fires if EITHER the caller cancels OR the timeout expires.
+    const timeoutSignal = AbortSignal.timeout(120_000);
+    const effectiveSignal = signal
+      ? AbortSignal.any([signal, timeoutSignal])
+      : timeoutSignal;
 
     const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
       method: "POST",

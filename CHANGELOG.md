@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.8] — 2026-03-22
+
+### Fixed
+- **Model hangs permanently after tool calls** — provider timeout was bypassed when the engine passed its own AbortSignal (always); now uses `AbortSignal.any()` to combine the caller's signal with a hard 120s timeout so hung models are detected and reported instead of blocking forever
+- **No retry on timeout** — engine no longer retries when a model times out (was doubling the wait to 240s with no chance of success); timeouts propagate immediately as errors
+
+---
+
 ## [1.4.7] — 2026-03-22
 
 ### Fixed

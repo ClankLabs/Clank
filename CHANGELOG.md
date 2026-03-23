@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.1] — 2026-03-23
+
+### Security
+- **Config get redaction** — `config get` action now redacts sensitive keys (apiKey, token, botToken) before returning to LLM context
+- **Config set protection** — config tool now blocks prototype pollution (`__proto__`, `constructor`, `prototype`)
+- **Rate limit streaming path** — `handleInboundMessageStreaming` now enforced (was bypassing rate limiter)
+- **SSRF private IPs** — web_fetch now blocks RFC 1918 ranges (10.x, 192.168.x, 172.16-31.x) and IPv4-mapped IPv6
+- **STT workspace containment** — speech_to_text tool now uses guardPath() to prevent reading files outside workspace
+
+### Audit Result
+- 0 dependency vulnerabilities
+- 14 PASS, 1 WARN (bash blocklist is defense-in-depth), 0 FAIL
+- Grade: A
+
+---
+
 ## [1.4.0] — 2026-03-23
 
 ### Added

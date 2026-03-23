@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.5.3] — 2026-03-23
+
+### Fixed
+- **Local thinking models return empty responses** — Qwen3.5 puts all output in `reasoning_content` with empty `content`, and `enable_thinking:false` doesn't work (chat template overrides it). Now treats `reasoning_content` as text for local models so the user actually sees a response
+
+---
+
 ## [1.5.2] — 2026-03-23
 
 ### Fixed

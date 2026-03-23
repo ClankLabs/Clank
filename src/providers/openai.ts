@@ -238,7 +238,14 @@ export class OpenAIProvider extends BaseProvider {
 
             const choice = chunk.choices?.[0];
             if (choice?.delta?.reasoning_content) {
-              yield { type: "thinking", content: choice.delta.reasoning_content };
+              if (this.isLocal) {
+                // Local thinking models (Qwen3.5, etc.) often put ALL output
+                // in reasoning_content with empty content. Treat reasoning as
+                // text so the user actually sees a response.
+                yield { type: "text", content: choice.delta.reasoning_content };
+              } else {
+                yield { type: "thinking", content: choice.delta.reasoning_content };
+              }
             }
             if (choice?.delta?.content) {
               yield { type: "text", content: choice.delta.content };

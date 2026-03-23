@@ -1,6 +1,6 @@
 {
   "name": "@tractorscorch/clank",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Local-first AI agent gateway. Open-source alternative to OpenClaw, optimized for local models.",
   "type": "module",
   "main": "dist/index.js",

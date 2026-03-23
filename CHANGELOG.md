@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [1.4.2] — 2026-03-22
+## [1.4.3] — 2026-03-22
 
 ### Fixed
 - **Telegram streaming stutter** — fixed race condition where multiple partial messages were sent instead of editing a single message; added synchronous guard flag to prevent duplicate `sendMessage` calls while the initial message promise is in-flight

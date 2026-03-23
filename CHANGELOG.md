@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.5.5] — 2026-03-23
+
+### Fixed
+- **Local models refuse to use tools** — models claimed "I can't access your files" despite having `read_file`, `write_file`, etc. available. Strengthened the system prompt to explicitly tell the model it runs locally on the user's machine with direct file system access and must never refuse file operations
+
+---
+
 ## [1.5.4] — 2026-03-23
 
 ### Fixed

@@ -1,1 +1,1 @@
-export { TTSEngine, STTEngine, type VoiceConfig, type TTSResult } from "./tts.js";
+export { TTSEngine, STTEngine, type TTSResult, type STTResult } from "./tts.js";

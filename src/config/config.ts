@@ -86,6 +86,29 @@ export interface ClankConfig {
   safety: {
     confirmExternal: boolean;
   };
+
+  /** Third-party API integrations */
+  integrations: {
+    elevenlabs?: {
+      enabled: boolean;
+      apiKey: string;
+      voiceId?: string;
+      model?: string; // e.g., "eleven_multilingual_v2"
+    };
+    whisper?: {
+      enabled: boolean;
+      provider: "local" | "openai"; // local = whisper.cpp, openai = Whisper API
+      apiKey?: string; // only for openai provider
+      model?: string;
+    };
+    imageGen?: {
+      enabled: boolean;
+      provider: "openai" | "fal";
+      apiKey?: string;
+    };
+    /** Generic integrations — extensible for future services */
+    [key: string]: { enabled: boolean; apiKey?: string; [k: string]: unknown } | undefined;
+  };
 }
 
 /** Get the config directory path */
@@ -136,6 +159,7 @@ export function defaultConfig(): ClankConfig {
     safety: {
       confirmExternal: true,
     },
+    integrations: {},
   };
 }
 

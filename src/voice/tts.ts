@@ -1,144 +1,180 @@
 /**
- * Voice / TTS system.
+ * Voice system — TTS and STT powered by integrations config.
  *
- * Supports both cloud (ElevenLabs) and local (piper) TTS.
- * Voice-in → voice-out routing: receive voice message → transcribe
- * via whisper.cpp → agent processes → TTS → audio reply.
+ * TTS: ElevenLabs (cloud) or piper (local)
+ * STT: OpenAI Whisper API (cloud) or whisper.cpp (local)
  *
- * Voice selection is per-agent configurable.
+ * The agent uses these through tools — it can generate speech
+ * from text and transcribe audio from voice messages.
  */
 
-export interface VoiceConfig {
-  enabled: boolean;
-  provider: "elevenlabs" | "piper" | "none";
-  elevenlabs?: {
-    apiKey: string;
-    voiceId: string;
-  };
-  piper?: {
-    modelPath: string;
-  };
-}
+import type { ClankConfig } from "../config/index.js";
 
 export interface TTSResult {
   audioBuffer: Buffer;
   format: "mp3" | "wav" | "ogg";
-  durationMs: number;
 }
 
-export class TTSEngine {
-  private config: VoiceConfig;
+export interface STTResult {
+  text: string;
+  language?: string;
+}
 
-  constructor(config: VoiceConfig) {
+/**
+ * Text-to-Speech engine.
+ */
+export class TTSEngine {
+  private config: ClankConfig;
+
+  constructor(config: ClankConfig) {
     this.config = config;
   }
 
-  /** Convert text to speech */
-  async synthesize(text: string): Promise<TTSResult | null> {
-    if (!this.config.enabled || this.config.provider === "none") {
-      return null;
-    }
-
-    switch (this.config.provider) {
-      case "elevenlabs":
-        return this.synthesizeElevenLabs(text);
-      case "piper":
-        return this.synthesizePiper(text);
-      default:
-        return null;
-    }
+  /** Check if TTS is available */
+  isAvailable(): boolean {
+    return !!(this.config.integrations.elevenlabs?.enabled && this.config.integrations.elevenlabs?.apiKey);
   }
 
-  /** ElevenLabs cloud TTS */
-  private async synthesizeElevenLabs(text: string): Promise<TTSResult | null> {
-    const config = this.config.elevenlabs;
-    if (!config?.apiKey || !config.voiceId) return null;
+  /** Convert text to speech */
+  async synthesize(text: string, opts?: { voiceId?: string }): Promise<TTSResult | null> {
+    const elevenlabs = this.config.integrations.elevenlabs;
+    if (!elevenlabs?.enabled || !elevenlabs.apiKey) return null;
+
+    const voiceId = opts?.voiceId || elevenlabs.voiceId || "JBFqnCBsd6RMkjVDRZzb"; // Default: George
+    const model = elevenlabs.model || "eleven_multilingual_v2";
 
     try {
       const res = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${config.voiceId}`,
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "xi-api-key": config.apiKey,
+            "xi-api-key": elevenlabs.apiKey,
           },
           body: JSON.stringify({
             text,
-            model_id: "eleven_monolingual_v1",
+            model_id: model,
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+            },
           }),
         },
       );
 
-      if (!res.ok) return null;
+      if (!res.ok) {
+        const err = await res.text().catch(() => "");
+        console.error(`ElevenLabs TTS error ${res.status}: ${err}`);
+        return null;
+      }
 
       const arrayBuffer = await res.arrayBuffer();
       return {
         audioBuffer: Buffer.from(arrayBuffer),
         format: "mp3",
-        durationMs: 0, // Would need audio parsing to determine
       };
-    } catch {
+    } catch (err) {
+      console.error(`TTS error: ${err instanceof Error ? err.message : err}`);
       return null;
     }
   }
 
-  /** Local piper TTS */
-  private async synthesizePiper(text: string): Promise<TTSResult | null> {
-    // Piper runs as a subprocess: echo "text" | piper --model model.onnx --output_file -
-    // Implementation depends on piper being installed locally
-    const config = this.config.piper;
-    if (!config?.modelPath) return null;
+  /** List available voices from ElevenLabs */
+  async listVoices(): Promise<Array<{ id: string; name: string }>> {
+    const elevenlabs = this.config.integrations.elevenlabs;
+    if (!elevenlabs?.enabled || !elevenlabs.apiKey) return [];
 
     try {
-      const { execFile } = await import("node:child_process");
-      return new Promise((resolve) => {
-        const proc = execFile(
-          "piper",
-          ["--model", config.modelPath, "--output-raw"],
-          { maxBuffer: 10 * 1024 * 1024 },
-          (error, stdout) => {
-            if (error || !stdout) {
-              resolve(null);
-              return;
-            }
-            resolve({
-              audioBuffer: Buffer.from(stdout, "binary"),
-              format: "wav",
-              durationMs: 0,
-            });
-          },
-        );
-        proc.stdin?.write(text);
-        proc.stdin?.end();
+      const res = await fetch("https://api.elevenlabs.io/v1/voices", {
+        headers: { "xi-api-key": elevenlabs.apiKey },
       });
+      if (!res.ok) return [];
+      const data = await res.json() as { voices?: Array<{ voice_id: string; name: string }> };
+      return (data.voices || []).map((v) => ({ id: v.voice_id, name: v.name }));
     } catch {
-      return null;
+      return [];
     }
   }
 }
 
+/**
+ * Speech-to-Text engine.
+ */
 export class STTEngine {
-  /** Transcribe audio to text using whisper.cpp */
-  async transcribe(audioBuffer: Buffer): Promise<string | null> {
-    // whisper.cpp integration — requires whisper binary installed
-    // whisper --model base.en --file input.wav --output-txt
+  private config: ClankConfig;
+
+  constructor(config: ClankConfig) {
+    this.config = config;
+  }
+
+  /** Check if STT is available */
+  isAvailable(): boolean {
+    const whisper = this.config.integrations.whisper;
+    if (whisper?.enabled) {
+      if (whisper.provider === "openai" && whisper.apiKey) return true;
+      if (whisper.provider === "local") return true;
+    }
+    // Fall back to OpenAI key from model providers
+    if (this.config.models.providers.openai?.apiKey) return true;
+    return false;
+  }
+
+  /** Transcribe audio to text */
+  async transcribe(audioBuffer: Buffer, format = "ogg"): Promise<STTResult | null> {
+    const whisper = this.config.integrations.whisper;
+
+    // Try OpenAI Whisper API
+    const apiKey = whisper?.apiKey || this.config.models.providers.openai?.apiKey;
+    if (apiKey && whisper?.provider !== "local") {
+      return this.transcribeOpenAI(audioBuffer, format, apiKey);
+    }
+
+    // Try local whisper.cpp
+    return this.transcribeLocal(audioBuffer, format);
+  }
+
+  /** Transcribe via OpenAI Whisper API */
+  private async transcribeOpenAI(audioBuffer: Buffer, format: string, apiKey: string): Promise<STTResult | null> {
+    try {
+      // Build multipart form data
+      const blob = new Blob([new Uint8Array(audioBuffer)], { type: `audio/${format}` });
+      const formData = new FormData();
+      formData.append("file", blob, `audio.${format}`);
+      formData.append("model", "whisper-1");
+
+      const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${apiKey}` },
+        body: formData,
+      });
+
+      if (!res.ok) return null;
+      const data = await res.json() as { text?: string; language?: string };
+      return data.text ? { text: data.text, language: data.language } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Transcribe via local whisper.cpp */
+  private async transcribeLocal(audioBuffer: Buffer, format: string): Promise<STTResult | null> {
     try {
       const { writeFile, unlink } = await import("node:fs/promises");
       const { execSync } = await import("node:child_process");
       const { join } = await import("node:path");
       const { tmpdir } = await import("node:os");
 
-      const tmpFile = join(tmpdir(), `clank-stt-${Date.now()}.wav`);
+      const tmpFile = join(tmpdir(), `clank-stt-${Date.now()}.${format}`);
       await writeFile(tmpFile, audioBuffer);
 
       const output = execSync(`whisper "${tmpFile}" --model base.en --output-txt`, {
         encoding: "utf-8",
-        timeout: 30_000,
+        timeout: 60_000,
       });
 
       await unlink(tmpFile).catch(() => {});
-      return output.trim() || null;
+      return output.trim() ? { text: output.trim() } : null;
     } catch {
       return null;
     }

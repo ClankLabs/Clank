@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.3.0] — 2026-03-23
+
+### Added
+- **ElevenLabs integration** — text-to-speech via ElevenLabs API, configurable during onboarding
+- **Whisper integration** — speech-to-text via OpenAI Whisper API or local whisper.cpp
+- **Voice tools (3):** `text_to_speech`, `speech_to_text`, `list_voices` — agent can generate and transcribe audio
+- **Telegram voice messages** — send a voice message → auto-transcribed via Whisper → routed to agent → response as voice (ElevenLabs) or text
+- **Integrations config section** — unified config for third-party API services (ElevenLabs, Whisper, image gen, extensible)
+- **Setup wizard integrations step** — configure ElevenLabs, Whisper, and other API services during onboarding
+
+### Changed
+- Tool count: 21 total (10 core + 11 self-config/voice)
+- Setup wizard now asks about integrations for all users (not just advanced mode)
+
+---
+
 ## [1.2.1] — 2026-03-23
 
 ### Fixed

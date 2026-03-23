@@ -216,22 +216,48 @@ export async function runSetup(opts: {
       }
     }
 
-    // Step 8: Voice (Advanced only)
-    if (isAdvanced) {
-      console.log("");
-      const addVoice = await ask(rl, cyan("  Set up voice (TTS/STT)? [y/N] "));
-      if (addVoice.toLowerCase() === "y") {
-        console.log(dim("    1. ElevenLabs (cloud)"));
-        console.log(dim("    2. Local (whisper.cpp + piper)"));
-        const voiceChoice = await ask(rl, cyan("    Choice [1]: "));
-        if (voiceChoice === "1" || !voiceChoice) {
-          const key = await ask(rl, cyan("    ElevenLabs API key: "));
-          if (key.trim()) {
-            console.log(green("    ElevenLabs configured"));
-          }
+    // Step 8: Integrations (API services)
+    console.log("");
+    console.log("  API Integrations:");
+    console.log(dim("    Add third-party services for voice, image gen, etc."));
+    console.log(dim("    You can also configure these later through conversation."));
+    console.log("");
+
+    const addElevenLabs = await ask(rl, cyan("  Set up ElevenLabs (text-to-speech)? [y/N] "));
+    if (addElevenLabs.toLowerCase() === "y") {
+      console.log(dim("    Get an API key at: https://elevenlabs.io/"));
+      const key = await ask(rl, cyan("    ElevenLabs API key: "));
+      if (key.trim()) {
+        config.integrations.elevenlabs = { enabled: true, apiKey: key.trim() };
+        const voiceId = await ask(rl, cyan("    Default voice ID (Enter to skip): "));
+        if (voiceId.trim()) {
+          config.integrations.elevenlabs.voiceId = voiceId.trim();
+        }
+        console.log(green("    ElevenLabs configured (TTS available)"));
+      }
+    }
+
+    const addWhisper = await ask(rl, cyan("  Set up speech-to-text (Whisper)? [y/N] "));
+    if (addWhisper.toLowerCase() === "y") {
+      console.log(dim("    1. OpenAI Whisper API (cloud, uses OpenAI key)"));
+      console.log(dim("    2. Local whisper.cpp (requires whisper installed)"));
+      const whisperChoice = await ask(rl, cyan("    Choice [1]: "));
+      if (whisperChoice === "2") {
+        config.integrations.whisper = { enabled: true, provider: "local" };
+        console.log(green("    Local whisper.cpp configured"));
+        console.log(dim("    Make sure whisper is installed and in PATH"));
+      } else {
+        // OpenAI Whisper — can reuse existing OpenAI key or add one
+        const existingKey = config.models.providers.openai?.apiKey;
+        if (existingKey) {
+          config.integrations.whisper = { enabled: true, provider: "openai", apiKey: existingKey };
+          console.log(green("    Whisper configured (using existing OpenAI key)"));
         } else {
-          console.log(dim("    Local voice will use whisper.cpp (STT) + piper (TTS)"));
-          console.log(dim("    Make sure they're installed: whisper, piper"));
+          const key = await ask(rl, cyan("    OpenAI API key for Whisper: "));
+          if (key.trim()) {
+            config.integrations.whisper = { enabled: true, provider: "openai", apiKey: key.trim() };
+            console.log(green("    Whisper configured"));
+          }
         }
       }
     }

@@ -123,6 +123,95 @@ export class TelegramAdapter extends ChannelAdapter {
         chatLocks.set(chatId, next);
       });
 
+      // Handle voice messages — transcribe and route through agent
+      bot.on("message:voice", async (ctx) => {
+        const msg = ctx.message;
+        const chatId = msg.chat.id;
+        const userId = msg.from?.id;
+
+        // Same permission check
+        if (telegramConfig.allowFrom && telegramConfig.allowFrom.length > 0) {
+          const username = msg.from?.username ? `@${msg.from.username}` : "";
+          const userIdStr = String(userId || "");
+          const allowed = telegramConfig.allowFrom.map(String);
+          const isAllowed = allowed.some((a) =>
+            a === userIdStr ||
+            a.toLowerCase() === username.toLowerCase() ||
+            a.toLowerCase() === (msg.from?.username || "").toLowerCase()
+          );
+          if (!isAllowed) return;
+        }
+
+        if (msg.date < startupTime - 30) return; // Drop stale
+
+        const processVoice = async () => {
+          if (!this.gateway || !this.config) return;
+
+          try {
+            await ctx.api.sendChatAction(chatId, "typing");
+
+            // Download the voice file
+            const file = await ctx.api.getFile(msg.voice.file_id);
+            const fileUrl = `https://api.telegram.org/file/bot${telegramConfig.botToken}/${file.file_path}`;
+            const res = await fetch(fileUrl);
+            if (!res.ok) { await ctx.api.sendMessage(chatId, "Error: could not download voice message"); return; }
+            const audioBuffer = Buffer.from(await res.arrayBuffer());
+
+            // Transcribe
+            const { STTEngine } = await import("../voice/index.js");
+            const { loadConfig } = await import("../config/index.js");
+            const config = await loadConfig();
+            const stt = new STTEngine(config);
+
+            if (!stt.isAvailable()) {
+              await ctx.api.sendMessage(chatId, "Voice messages require speech-to-text. Set up Whisper: /help");
+              return;
+            }
+
+            const transcription = await stt.transcribe(audioBuffer, "ogg");
+            if (!transcription?.text) {
+              await ctx.api.sendMessage(chatId, "Could not transcribe voice message.");
+              return;
+            }
+
+            // Send transcription through the agent
+            const isGroup = msg.chat.type === "group" || msg.chat.type === "supergroup";
+            const response = await this.gateway.handleInboundMessage(
+              { channel: "telegram", peerId: chatId, peerKind: isGroup ? "group" : "dm" },
+              `[Voice message transcription]: ${transcription.text}`,
+            );
+
+            if (response) {
+              // Check if TTS is available — reply with voice if so
+              const { TTSEngine } = await import("../voice/index.js");
+              const tts = new TTSEngine(config);
+
+              if (tts.isAvailable() && response.length < 2000) {
+                const audio = await tts.synthesize(response);
+                if (audio) {
+                  const { InputFile } = await import("grammy");
+                  await ctx.api.sendVoice(chatId, new InputFile(audio.audioBuffer, "reply.mp3"));
+                  return;
+                }
+              }
+
+              // Fall back to text
+              const chunks = splitMessage(response, 4000);
+              for (const chunk of chunks) {
+                await ctx.api.sendMessage(chatId, chunk);
+              }
+            }
+          } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            await ctx.api.sendMessage(chatId, `Error: ${errMsg.slice(0, 200)}`);
+          }
+        };
+
+        const prev = chatLocks.get(chatId) || Promise.resolve();
+        const next = prev.then(processVoice).catch(() => {});
+        chatLocks.set(chatId, next);
+      });
+
       // bot.start() is blocking (resolves when bot stops) — run it without await
       bot.start({
         onStart: () => {

@@ -39,12 +39,23 @@ export class TelegramAdapter extends ChannelAdapter {
       this.bot = new Bot(telegramConfig.botToken);
       const bot = this.bot as Bot;
 
+      // Track startup time — messages older than this are stale
+      const startupTime = Math.floor(Date.now() / 1000);
+      // Per-chat processing queue — prevents parallel model calls from same chat
+      const chatLocks = new Map<number, Promise<void>>();
+
       // Handle text messages
       bot.on("message:text", async (ctx) => {
         const msg = ctx.message;
         const chatId = msg.chat.id;
         const userId = msg.from?.id;
         const isGroup = msg.chat.type === "group" || msg.chat.type === "supergroup";
+
+        // Drop stale messages from before this startup (queued while offline)
+        if (msg.date < startupTime - 30) {
+          console.log(`  Telegram: dropping stale message from ${userId} (${startupTime - msg.date}s old)`);
+          return;
+        }
 
         // Permission check — allowFrom can contain user IDs (numeric) or usernames (@name)
         if (telegramConfig.allowFrom && telegramConfig.allowFrom.length > 0) {
@@ -68,7 +79,7 @@ export class TelegramAdapter extends ChannelAdapter {
           }
         }
 
-        // Handle slash commands in messaging apps
+        // Handle slash commands (lightweight, no queueing needed)
         if (msg.text.startsWith("/")) {
           const reply = await this.handleCommand(msg.text, chatId, isGroup);
           if (reply) {
@@ -77,33 +88,39 @@ export class TelegramAdapter extends ChannelAdapter {
           return;
         }
 
-        // Route through gateway
-        if (!this.gateway) return;
+        // Queue messages per chat — process one at a time to prevent
+        // parallel model calls from flooding the local model
+        const processMessage = async () => {
+          if (!this.gateway) return;
 
-        try {
-          // Send typing indicator
-          await ctx.api.sendChatAction(chatId, "typing");
+          try {
+            await ctx.api.sendChatAction(chatId, "typing");
 
-          const response = await this.gateway.handleInboundMessage(
-            {
-              channel: "telegram",
-              peerId: chatId,
-              peerKind: isGroup ? "group" : "dm",
-            },
-            msg.text,
-          );
+            const response = await this.gateway.handleInboundMessage(
+              {
+                channel: "telegram",
+                peerId: chatId,
+                peerKind: isGroup ? "group" : "dm",
+              },
+              msg.text,
+            );
 
-          // Send response (split if too long for Telegram's 4096 char limit)
-          if (response) {
-            const chunks = splitMessage(response, 4000);
-            for (const chunk of chunks) {
-              await ctx.api.sendMessage(chatId, chunk);
+            if (response) {
+              const chunks = splitMessage(response, 4000);
+              for (const chunk of chunks) {
+                await ctx.api.sendMessage(chatId, chunk);
+              }
             }
+          } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            await ctx.api.sendMessage(chatId, `Error: ${errMsg.slice(0, 200)}`);
           }
-        } catch (err: unknown) {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          await ctx.api.sendMessage(chatId, `Error: ${errMsg.slice(0, 200)}`);
-        }
+        };
+
+        // Chain onto the existing queue for this chat
+        const prev = chatLocks.get(chatId) || Promise.resolve();
+        const next = prev.then(processMessage).catch(() => {});
+        chatLocks.set(chatId, next);
       });
 
       // bot.start() is blocking (resolves when bot stops) — run it without await

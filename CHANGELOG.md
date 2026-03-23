@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.5.6] — 2026-03-23
+
+### Fixed
+- **Local models still refusing actions** — v1.5.5 prompt wasn't forceful enough. Rewrote system prompt as a dense, authoritative rules block with numbered rules and explicit list of available tools. Added negative examples ("NEVER say 'I cannot access files'") which are more effective at overriding local model training biases than positive instructions alone
+
+---
+
 ## [1.5.5] — 2026-03-23
 
 ### Fixed

@@ -317,7 +317,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.5.5",
+        version: "1.5.6",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -453,7 +453,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.5.5",
+      version: "1.5.6",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,

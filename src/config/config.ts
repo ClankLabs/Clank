@@ -35,6 +35,12 @@ export interface ClankConfig {
       toolTier: ToolTier;
       temperature?: number;
       maxResponseTokens?: number;
+      /** Compact system prompt for small models — strips SOUL.md fluff */
+      compactPrompt?: boolean;
+      /** Control thinking/reasoning output: "on", "off", or "auto" */
+      thinking?: "on" | "off" | "auto";
+      /** Timeout for model responses in ms (default: 120000) */
+      responseTimeout?: number;
     };
     list: Array<{
       id: string;
@@ -43,6 +49,9 @@ export interface ClankConfig {
       workspace?: string;
       toolTier?: ToolTier;
       tools?: { allow?: string[]; deny?: string[] };
+      compactPrompt?: boolean;
+      thinking?: "on" | "off" | "auto";
+      voiceId?: string; // ElevenLabs voice for this agent
     }>;
   };
 

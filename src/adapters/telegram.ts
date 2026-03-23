@@ -96,16 +96,62 @@ export class TelegramAdapter extends ChannelAdapter {
           try {
             await ctx.api.sendChatAction(chatId, "typing");
 
-            const response = await this.gateway.handleInboundMessage(
+            // Streaming: send initial message then edit as tokens arrive
+            let streamMsgId: number | null = null;
+            let accumulated = "";
+            let lastEditTime = 0;
+            const EDIT_INTERVAL = 800; // ms between edits (Telegram rate limit)
+
+            const response = await this.gateway.handleInboundMessageStreaming(
               {
                 channel: "telegram",
                 peerId: chatId,
                 peerKind: isGroup ? "group" : "dm",
               },
               msg.text,
+              {
+                onToken: (content: string) => {
+                  accumulated += content;
+                  const now = Date.now();
+
+                  // Send initial message on first tokens
+                  if (!streamMsgId && accumulated.length > 20) {
+                    bot.api.sendMessage(chatId, accumulated + " ▍").then((sent) => {
+                      streamMsgId = sent.message_id;
+                      lastEditTime = now;
+                    }).catch(() => {});
+                    return;
+                  }
+
+                  // Edit message at intervals (respect Telegram rate limits)
+                  if (streamMsgId && now - lastEditTime > EDIT_INTERVAL) {
+                    lastEditTime = now;
+                    const display = accumulated.length > 4000
+                      ? accumulated.slice(-3900) + " ▍"
+                      : accumulated + " ▍";
+                    bot.api.editMessageText(chatId, streamMsgId, display).catch(() => {});
+                  }
+                },
+                onToolStart: (name: string) => {
+                  // Show tool indicator if no streaming message yet
+                  if (!streamMsgId) {
+                    bot.api.sendChatAction(chatId, "typing").catch(() => {});
+                  }
+                },
+                onError: (message: string) => {
+                  bot.api.sendMessage(chatId, `Error: ${message.slice(0, 200)}`).catch(() => {});
+                },
+              },
             );
 
-            if (response) {
+            // Final edit with complete response (remove cursor)
+            if (streamMsgId && response) {
+              const finalText = response.length > 4000
+                ? response.slice(0, 3950) + "\n... (truncated)"
+                : response;
+              await bot.api.editMessageText(chatId, streamMsgId, finalText).catch(() => {});
+            } else if (response && !streamMsgId) {
+              // Never started streaming — send full response
               const chunks = splitMessage(response, 4000);
               for (const chunk of chunks) {
                 await ctx.api.sendMessage(chatId, chunk);

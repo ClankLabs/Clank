@@ -175,6 +175,66 @@ export class GatewayServer {
     return engine.sendMessage(text);
   }
 
+  /**
+   * Handle an inbound message with streaming callbacks.
+   * Used by channel adapters for real-time streaming (e.g., Telegram message editing).
+   */
+  async handleInboundMessageStreaming(
+    context: RouteContext,
+    text: string,
+    callbacks: {
+      onToken?: (content: string) => void;
+      onToolStart?: (name: string) => void;
+      onToolResult?: (name: string, success: boolean) => void;
+      onError?: (message: string) => void;
+    },
+  ): Promise<string> {
+    const agentId = resolveRoute(
+      context,
+      [],
+      this.config.agents.list.map((a) => ({ id: a.id, name: a.name })),
+      this.config.agents.list[0]?.id || "default",
+    );
+
+    const sessionKey = deriveSessionKey(context);
+    const engine = await this.getOrCreateEngine(sessionKey, agentId, context.channel);
+
+    // Wire streaming callbacks
+    const listeners: Array<[string, (...args: unknown[]) => void]> = [];
+
+    if (callbacks.onToken) {
+      const fn = (data: unknown) => callbacks.onToken!((data as { content: string }).content);
+      engine.on("token", fn);
+      listeners.push(["token", fn]);
+    }
+    if (callbacks.onToolStart) {
+      const fn = (data: unknown) => callbacks.onToolStart!((data as { name: string }).name);
+      engine.on("tool-start", fn);
+      listeners.push(["tool-start", fn]);
+    }
+    if (callbacks.onToolResult) {
+      const fn = (data: unknown) => {
+        const d = data as { name: string; success: boolean };
+        callbacks.onToolResult!(d.name, d.success);
+      };
+      engine.on("tool-result", fn);
+      listeners.push(["tool-result", fn]);
+    }
+    if (callbacks.onError) {
+      const fn = (data: unknown) => callbacks.onError!((data as { message: string }).message);
+      engine.on("error", fn);
+      listeners.push(["error", fn]);
+    }
+
+    try {
+      return await engine.sendMessage(text);
+    } finally {
+      for (const [event, fn] of listeners) {
+        engine.removeListener(event, fn);
+      }
+    }
+  }
+
   /** Stop the gateway server */
   async stop(): Promise<void> {
     this.running = false;
@@ -599,10 +659,14 @@ export class GatewayServer {
     };
 
     // Build system prompt from workspace files + memory
+    const compact = agentConfig?.compactPrompt ?? this.config.agents.defaults.compactPrompt ?? false;
+    const thinking = agentConfig?.thinking ?? this.config.agents.defaults.thinking ?? "auto";
     const systemPrompt = await buildSystemPrompt({
       identity,
       workspaceDir: identity.workspace,
       channel,
+      compact,
+      thinking,
     });
 
     // Inject memory context into system prompt

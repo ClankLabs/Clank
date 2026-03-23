@@ -29,32 +29,55 @@ export async function buildSystemPrompt(opts: {
   identity: AgentIdentity;
   workspaceDir: string;
   channel?: string;
+  compact?: boolean;
+  thinking?: "on" | "off" | "auto";
 }): Promise<string> {
   const parts: string[] = [];
+  const compact = opts.compact ?? false;
 
-  // Load workspace files
-  const workspaceContent = await loadWorkspaceFiles(opts.workspaceDir);
-  if (workspaceContent) {
-    parts.push(workspaceContent);
-    parts.push("---");
+  if (!compact) {
+    // Full mode: load workspace files (SOUL.md, USER.md, etc.)
+    const workspaceContent = await loadWorkspaceFiles(opts.workspaceDir);
+    if (workspaceContent) {
+      parts.push(workspaceContent);
+      parts.push("---");
+    }
   }
 
-  // Runtime info
-  parts.push("## Runtime");
-  parts.push(`Agent: ${opts.identity.name} (${opts.identity.id})`);
-  parts.push(`Model: ${opts.identity.model.primary}`);
-  parts.push(`Workspace: ${opts.identity.workspace}`);
-  parts.push(`Platform: ${platform()} (${hostname()})`);
-  parts.push(`Channel: ${opts.channel || "cli"}`);
-  parts.push(`Tool tier: ${opts.identity.toolTier}`);
+  // Runtime info (always included, brief in compact mode)
+  if (compact) {
+    parts.push(`Agent: ${opts.identity.name} | Model: ${opts.identity.model.primary} | Dir: ${opts.identity.workspace}`);
+  } else {
+    parts.push("## Runtime");
+    parts.push(`Agent: ${opts.identity.name} (${opts.identity.id})`);
+    parts.push(`Model: ${opts.identity.model.primary}`);
+    parts.push(`Workspace: ${opts.identity.workspace}`);
+    parts.push(`Platform: ${platform()} (${hostname()})`);
+    parts.push(`Channel: ${opts.channel || "cli"}`);
+    parts.push(`Tool tier: ${opts.identity.toolTier}`);
+  }
   parts.push("");
 
   // Core instructions
-  parts.push("## Instructions");
-  parts.push("You are a helpful AI assistant with access to tools for reading/writing files, running commands, and more.");
-  parts.push("Be concise and direct. Use tools proactively to accomplish tasks.");
-  parts.push("When you need to make changes, read the relevant files first to understand the context.");
-  parts.push("You can configure yourself — use the config, channel, agent, and model management tools to modify your own setup.");
+  if (compact) {
+    parts.push("You are a helpful AI assistant with tools. Be concise. Use tools proactively. Read files before editing.");
+  } else {
+    parts.push("## Instructions");
+    parts.push("You are a helpful AI assistant with access to tools for reading/writing files, running commands, and more.");
+    parts.push("Be concise and direct. Use tools proactively to accomplish tasks.");
+    parts.push("When you need to make changes, read the relevant files first to understand the context.");
+    parts.push("You can configure yourself — use the config, channel, agent, and model management tools to modify your own setup.");
+  }
+
+  // Thinking control
+  if (opts.thinking === "off") {
+    parts.push("");
+    parts.push("Do NOT use extended thinking or reasoning blocks. Respond directly and concisely.");
+  }
+
+  // Memory persistence instruction
+  parts.push("");
+  parts.push("When you learn something important about the user or project, save it using the config or memory tools so you remember it next time.");
   parts.push("");
 
   // Project context — check for .clank.md in workspace

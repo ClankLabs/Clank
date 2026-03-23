@@ -13,6 +13,7 @@
 import { EventEmitter } from "node:events";
 import { ContextEngine } from "./context-engine.js";
 import { ToolRegistry, type ToolContext, type Tool, type ToolTier } from "../tools/index.js";
+import { shouldPersist, extractMemory, appendToMemory } from "../memory/auto-persist.js";
 import {
   type BaseProvider,
   type Message,
@@ -120,6 +121,11 @@ export class AgentEngine extends EventEmitter {
       const ctxSize = await (this.resolvedProvider.provider as OllamaProvider).detectContextWindow();
       this.contextEngine.setContextWindow(ctxSize);
     }
+
+    // If loaded session is too big for the context window, compact immediately
+    if (this.contextEngine.needsCompaction()) {
+      await this.contextEngine.compactSmart();
+    }
   }
 
   /** Cancel the current request */
@@ -142,6 +148,14 @@ export class AgentEngine extends EventEmitter {
 
     // Add user message to context
     this.contextEngine.ingest({ role: "user", content: text });
+
+    // Auto-persist important user statements to memory (background, non-blocking)
+    if (shouldPersist(text)) {
+      const memory = extractMemory(text);
+      if (memory) {
+        appendToMemory(this.identity.workspace, memory).catch(() => {});
+      }
+    }
 
     // Auto-title session from first message
     if (this.currentSession && !this.currentSession.label) {
@@ -190,20 +204,25 @@ export class AgentEngine extends EventEmitter {
           denylist: this.identity.tools?.deny,
         });
 
-        // Stream from the provider
+        // Stream from the provider (with retry on transient failures)
         let iterationText = "";
         const toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
         let promptTokens = 0;
         let outputTokens = 0;
+        let streamSuccess = false;
 
         this.emit("response-start");
 
-        for await (const event of activeProvider.stream(
-          this.contextEngine.getMessages(),
-          this.systemPrompt,
-          toolDefs,
-          signal,
-        )) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const streamIterator = activeProvider.stream(
+              this.contextEngine.getMessages(),
+              this.systemPrompt,
+              toolDefs,
+              signal,
+            );
+
+        for await (const event of streamIterator) {
           switch (event.type) {
             case "text":
               iterationText += event.content;
@@ -231,6 +250,26 @@ export class AgentEngine extends EventEmitter {
             case "done":
               break;
           }
+        }
+            streamSuccess = true;
+            break; // Success — exit retry loop
+          } catch (streamErr) {
+            if (attempt === 0 && !signal.aborted) {
+              // First failure — retry once after brief pause
+              this.emit("error", {
+                message: `Model connection failed, retrying... (${streamErr instanceof Error ? streamErr.message : "unknown"})`,
+                recoverable: true,
+              });
+              await new Promise((r) => setTimeout(r, 2000));
+              continue;
+            }
+            throw streamErr; // Second failure — propagate
+          }
+        } // end retry loop
+
+        if (!streamSuccess) {
+          this.emit("error", { message: "Model failed to respond after retry", recoverable: false });
+          break;
         }
 
         // Emit usage stats

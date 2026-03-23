@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.5.1] — 2026-03-23
+
+### Fixed
+- **Local models timing out on tool calls** — removed per-chunk read timeout that was killing legitimate slow processing; a 35B quantized model can take minutes for prefill on large contexts, that's normal not a hang
+- **Local model timeout increased to 5 minutes** — was 120s (too short for large quantized models doing prefill on big contexts with tool results)
+- **Memory budget reduced for local models** — memory injection now uses 1.5K chars (was 4K) to avoid eating the limited context window of local models (8K-32K vs 128K+ for cloud)
+
+---
+
 ## [1.5.0] — 2026-03-23
 
 ### Fixed

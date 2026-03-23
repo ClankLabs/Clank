@@ -204,10 +204,10 @@ export class OllamaProvider extends BaseProvider {
       body.max_tokens = this.maxResponseTokens;
     }
 
-    // Combine the caller's abort signal with a 120s timeout so the gateway
-    // doesn't hang forever if the local model is unresponsive or OOM.
-    // AbortSignal.any() fires if EITHER the caller cancels OR the timeout expires.
-    const timeoutSignal = AbortSignal.timeout(120_000);
+    // Combine the caller's abort signal with a 5-minute timeout. Local models
+    // (especially large quantized ones like 35B) can take minutes for prefill
+    // on large contexts. This timeout covers the entire request lifecycle.
+    const timeoutSignal = AbortSignal.timeout(300_000);
     const effectiveSignal = signal
       ? AbortSignal.any([signal, timeoutSignal])
       : timeoutSignal;
@@ -233,16 +233,9 @@ export class OllamaProvider extends BaseProvider {
     const decoder = new TextDecoder();
     let buffer = "";
     const toolCalls = new Map<number, { id: string; name: string; arguments: string }>();
-    // Per-chunk timeout: if no data arrives for 60s, the model is stuck
-    const CHUNK_TIMEOUT = 60_000;
-
     try {
       while (true) {
-        const readPromise = reader.read();
-        const timeoutPromise = new Promise<{ done: true; value: undefined }>((_, reject) =>
-          setTimeout(() => reject(new Error("Model stopped responding (no data for 60s)")), CHUNK_TIMEOUT)
-        );
-        const { done, value } = await Promise.race([readPromise, timeoutPromise]);
+        const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });

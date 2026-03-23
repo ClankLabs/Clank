@@ -117,9 +117,24 @@ export class OpenAIProvider extends BaseProvider {
     tools: ToolDefinition[],
     signal?: AbortSignal,
   ): AsyncGenerator<StreamEvent> {
+    // Sanitize messages — remove orphaned tool results (no matching tool_call)
+    // which cause 400 errors from OpenAI-compatible APIs including llama.cpp
+    const toolCallIds = new Set<string>();
+    for (const msg of messages) {
+      if (msg.role === "assistant" && msg.tool_calls) {
+        for (const tc of msg.tool_calls) toolCallIds.add(tc.id);
+      }
+    }
+    const sanitized = messages.filter((msg) => {
+      if (msg.role === "tool" && msg.tool_call_id && !toolCallIds.has(msg.tool_call_id)) {
+        return false;
+      }
+      return true;
+    });
+
     const body: Record<string, unknown> = {
       model: this.model,
-      messages: this.prepareMessages(messages, systemPrompt),
+      messages: this.prepareMessages(sanitized, systemPrompt),
       stream: true,
       stream_options: { include_usage: true },
     };
@@ -139,7 +154,9 @@ export class OpenAIProvider extends BaseProvider {
       headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
-    const timeoutSignal = AbortSignal.timeout(90_000);
+    // Local models (llama.cpp, vLLM) need longer timeouts than cloud APIs
+    const timeoutMs = this.isLocal ? 120_000 : 90_000;
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
     const effectiveSignal = signal
       ? AbortSignal.any([signal, timeoutSignal])
       : timeoutSignal;

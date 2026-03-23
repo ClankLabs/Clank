@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.4.9] — 2026-03-22
+
+### Fixed
+- **llama.cpp/local models crashing on tool calls** — OpenAI provider (used for llama.cpp, LM Studio, vLLM) was missing the orphaned tool result filter that Ollama had; orphaned tool results after compaction caused 400 API errors and permanent session corruption
+- **Local model timeout too short** — OpenAI provider used 90s cloud timeout for local models; now uses 120s for local (matching Ollama) since large quantized models need time to process
+
+---
+
 ## [1.4.8] — 2026-03-22
 
 ### Fixed

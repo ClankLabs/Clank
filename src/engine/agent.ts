@@ -77,10 +77,18 @@ export class AgentEngine extends EventEmitter {
   private alwaysApproved = new Set<string>();
   /** Background task registry (if available) */
   private taskRegistry: TaskRegistry | null = null;
-  /** Function to spawn background tasks (main agent only) */
+  /** Function to spawn background tasks */
   private spawnTaskFn: ToolContext["spawnTask"] = undefined;
-  /** Session key for this engine (used to consume completed tasks) */
+  /** Function to kill a running task */
+  private killTaskFn: ToolContext["killTask"] = undefined;
+  /** Function to message a running child task */
+  private messageTaskFn: ToolContext["messageTask"] = undefined;
+  /** Session key for this engine */
   private sessionKey: string = "";
+  /** Spawn depth: 0 = main, 1+ = sub-agent */
+  private spawnDepth: number = 0;
+  /** Maximum allowed spawn depth */
+  private maxSpawnDepth: number = 1;
 
   constructor(opts: {
     identity: AgentIdentity;
@@ -91,7 +99,11 @@ export class AgentEngine extends EventEmitter {
     systemPrompt?: string;
     taskRegistry?: TaskRegistry;
     spawnTask?: ToolContext["spawnTask"];
+    killTask?: ToolContext["killTask"];
+    messageTask?: ToolContext["messageTask"];
     sessionKey?: string;
+    spawnDepth?: number;
+    maxSpawnDepth?: number;
   }) {
     super();
     // Engine is reused across messages — each message adds/removes listeners
@@ -105,7 +117,11 @@ export class AgentEngine extends EventEmitter {
     if (opts.systemPrompt) this.systemPrompt = opts.systemPrompt;
     if (opts.taskRegistry) this.taskRegistry = opts.taskRegistry;
     if (opts.spawnTask) this.spawnTaskFn = opts.spawnTask;
+    if (opts.killTask) this.killTaskFn = opts.killTask;
+    if (opts.messageTask) this.messageTaskFn = opts.messageTask;
     if (opts.sessionKey) this.sessionKey = opts.sessionKey;
+    if (opts.spawnDepth !== undefined) this.spawnDepth = opts.spawnDepth;
+    if (opts.maxSpawnDepth !== undefined) this.maxSpawnDepth = opts.maxSpawnDepth;
 
     this.contextEngine = new ContextEngine({
       contextWindow: opts.provider.provider.contextWindow(),
@@ -408,6 +424,11 @@ export class AgentEngine extends EventEmitter {
             signal,
             taskRegistry: this.taskRegistry ?? undefined,
             spawnTask: this.spawnTaskFn,
+            killTask: this.killTaskFn,
+            messageTask: this.messageTaskFn,
+            spawnDepth: this.spawnDepth,
+            maxSpawnDepth: this.maxSpawnDepth,
+            sessionKey: this.sessionKey,
           };
 
           const validation = tool.validate(tc.arguments, toolCtx);

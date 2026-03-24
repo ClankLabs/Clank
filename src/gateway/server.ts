@@ -23,6 +23,7 @@ import { MemoryManager } from "../memory/index.js";
 import { type ClankConfig, getConfigDir, ConfigWatcher } from "../config/index.js";
 import { CronScheduler } from "../cron/index.js";
 import { TaskRegistry } from "../tasks/index.js";
+import { AuthProfileStore } from "../auth/index.js";
 import { resolveRoute, deriveSessionKey, type RouteContext } from "../routing/index.js";
 import { type ChannelAdapter } from "../adapters/base.js";
 import { TelegramAdapter } from "../adapters/telegram.js";
@@ -64,6 +65,7 @@ export class GatewayServer {
   private configWatcher: ConfigWatcher;
   private pluginLoader: PluginLoader;
   private taskRegistry: TaskRegistry;
+  private authProfileStore: AuthProfileStore;
   private adapters: ChannelAdapter[] = [];
   private running = false;
   /** Rate limiting: track message timestamps per session */
@@ -80,6 +82,7 @@ export class GatewayServer {
     this.configWatcher = new ConfigWatcher();
     this.pluginLoader = new PluginLoader();
     this.taskRegistry = new TaskRegistry();
+    this.authProfileStore = new AuthProfileStore();
   }
 
   /** Get the task registry (for adapters to list tasks) */
@@ -353,7 +356,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.6.0",
+        version: "1.7.0",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -489,7 +492,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.6.0",
+      version: "1.7.0",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,
@@ -589,7 +592,23 @@ export class GatewayServer {
             id: task.id, label: task.label, agentId: task.agentId, model: task.model,
             status: task.status, prompt: task.prompt, result: task.result, error: task.error,
             startedAt: task.startedAt, completedAt: task.completedAt,
+            spawnDepth: task.spawnDepth, children: task.children.length,
           } : null);
+          break;
+        }
+
+        case "task.kill": {
+          const killId = frame.params?.taskId as string;
+          const killTask = this.taskRegistry.get(killId);
+          if (!killTask) {
+            this.sendResponse(client, frame.id, false, undefined, "Task not found");
+            break;
+          }
+          const subEng = this.engines.get(`task:${killId}`);
+          if (subEng) { subEng.cancel(); subEng.destroy(); this.engines.delete(`task:${killId}`); }
+          this.taskRegistry.cancel(killId);
+          const cascaded = this.taskRegistry.cascadeCancel(`task:${killId}`);
+          this.sendResponse(client, frame.id, true, { killed: killId, cascadeKilled: cascaded });
           break;
         }
 
@@ -767,6 +786,17 @@ export class GatewayServer {
     const agentConfig = this.config.agents.list.find((a) => a.id === agentId);
     const modelConfig = agentConfig?.model || this.config.agents.defaults.model;
 
+    // If any model in the chain uses Codex OAuth, resolve a fresh token
+    const allModels = [modelConfig.primary, ...(modelConfig.fallbacks || [])];
+    if (allModels.some((m) => m.startsWith("codex/"))) {
+      try {
+        const token = await this.authProfileStore.resolveApiKey("openai-codex:default");
+        (this.config.models.providers as Record<string, unknown>).codex = { apiKey: token };
+      } catch (err) {
+        console.error(`  Codex OAuth: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+
     // Resolve provider with fallback chain
     const resolved = await resolveWithFallback(
       modelConfig.primary,
@@ -803,16 +833,25 @@ export class GatewayServer {
       ? systemPrompt + "\n\n---\n\n" + memoryBlock
       : systemPrompt;
 
-    // Only the main/default agent can spawn background tasks.
-    // Sub-agents (spawned by tasks) don't get this capability.
-    const isMainAgent = !sessionKey.startsWith("task:") && (
-      agentId === (this.config.agents.list[0]?.id || "default") || agentId === "default"
-    );
+    // Determine spawn depth for this engine
+    const currentDepth = sessionKey.startsWith("task:")
+      ? (this.taskRegistry.getBySessionKey(sessionKey)?.spawnDepth ?? 0) + 1
+      : 0;
+    const maxSpawnDepth = this.config.agents.defaults.subagents?.maxSpawnDepth ?? 1;
+    const maxConcurrent = this.config.agents.defaults.subagents?.maxConcurrent ?? 8;
 
-    const spawnTaskFn = isMainAgent ? async (opts: {
+    // Agents within the depth limit can spawn sub-agents
+    const canSpawn = currentDepth < maxSpawnDepth;
+
+    const spawnTaskFn = canSpawn ? async (opts: {
       agentId: string; prompt: string; label: string; timeoutMs: number;
     }): Promise<string> => {
-      // Look up the sub-agent's model
+      // Enforce concurrent limit
+      const active = this.taskRegistry.countActiveByParent(sessionKey);
+      if (active >= maxConcurrent) {
+        throw new Error(`Concurrent task limit reached (${active}/${maxConcurrent}). Kill a task first.`);
+      }
+
       const subAgentConfig = this.config.agents.list.find((a) => a.id === opts.agentId);
       const subModel = subAgentConfig?.model?.primary || this.config.agents.defaults.model.primary;
 
@@ -823,6 +862,8 @@ export class GatewayServer {
         label: opts.label,
         timeoutMs: opts.timeoutMs,
         spawnedBy: sessionKey,
+        spawnDepth: currentDepth,
+        parentSessionKey: sessionKey,
       });
 
       // Create sub-agent engine in the background
@@ -856,16 +897,67 @@ export class GatewayServer {
       return task.id;
     } : undefined;
 
+    // Kill task function — cancel a task and cascade-kill children
+    const killTaskFn = async (taskId: string): Promise<{ status: string; cascadeKilled?: number }> => {
+      const task = this.taskRegistry.get(taskId);
+      if (!task) return { status: "not_found" };
+      if (task.spawnedBy !== sessionKey) return { status: "not_owner" };
+      if (task.status !== "running") return { status: "already_done" };
+
+      // Cancel the task's engine
+      const subEngine = this.engines.get(`task:${taskId}`);
+      if (subEngine) {
+        subEngine.cancel();
+        subEngine.destroy();
+        this.engines.delete(`task:${taskId}`);
+      }
+
+      this.taskRegistry.cancel(taskId);
+      const cascadeKilled = this.taskRegistry.cascadeCancel(`task:${taskId}`);
+      return { status: "ok", cascadeKilled };
+    };
+
+    // Message task function — send a message to a running child
+    const messageTaskFn = async (taskId: string, message: string): Promise<{ status: string; replyText?: string }> => {
+      const task = this.taskRegistry.get(taskId);
+      if (!task) return { status: "not_found" };
+      if (task.spawnedBy !== sessionKey) return { status: "not_owner" };
+      if (task.status !== "running") return { status: "not_running" };
+
+      const subEngine = this.engines.get(`task:${taskId}`);
+      if (!subEngine) return { status: "not_found" };
+
+      try {
+        const reply = await subEngine.sendMessage(message);
+        return { status: "ok", replyText: reply };
+      } catch (err) {
+        return { status: "error", replyText: err instanceof Error ? err.message : String(err) };
+      }
+    };
+
+    // Sub-agent system prompt addition
+    let finalPrompt = fullPrompt;
+    if (currentDepth > 0) {
+      const depthNote = currentDepth < maxSpawnDepth
+        ? "You can spawn further sub-agents if needed."
+        : "You cannot spawn further sub-agents (depth limit reached).";
+      finalPrompt = `[Sub-Agent] You were spawned by a parent agent to complete a specific task.\n${depthNote}\n\n---\n\n${fullPrompt}`;
+    }
+
     engine = new AgentEngine({
       identity,
       toolRegistry: this.toolRegistry,
       sessionStore: this.sessionStore,
       provider: resolved,
       autoApprove: this.config.tools.autoApprove,
-      systemPrompt: fullPrompt,
+      systemPrompt: finalPrompt,
       taskRegistry: this.taskRegistry,
       spawnTask: spawnTaskFn,
+      killTask: killTaskFn,
+      messageTask: messageTaskFn,
       sessionKey,
+      spawnDepth: currentDepth,
+      maxSpawnDepth,
     });
 
     await engine.loadSession(sessionKey, channel);

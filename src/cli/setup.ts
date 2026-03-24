@@ -135,7 +135,9 @@ export async function runSetup(opts: {
         console.log("    2. OpenAI (GPT-4o, Codex)");
         console.log("    3. Google (Gemini)");
         console.log("    4. OpenRouter (many models via one key)");
-        console.log("    5. Done");
+        console.log("    5. OpenCode (subscription-based, many models)");
+        console.log("    6. OpenAI Codex (ChatGPT Plus/Pro login)");
+        console.log("    7. Done");
         const choice = await ask(rl, cyan("    Which provider? "));
 
         const providerSetup = async (name: string, defaultModel: string, keyName: string) => {
@@ -152,6 +154,7 @@ export async function runSetup(opts: {
           if (key.trim()) {
             const entry: Record<string, string> = { apiKey: key.trim() };
             if (name === "openrouter") entry.baseUrl = "https://openrouter.ai/api/v1";
+            else if (name === "opencode") entry.baseUrl = "https://opencode.ai/zen";
             (config.models.providers as Record<string, unknown>)[name] = entry;
             if (!fallbacks.includes(defaultModel)) fallbacks.push(defaultModel);
             console.log(green(`    ${name} configured`));
@@ -176,7 +179,32 @@ export async function runSetup(opts: {
             }
             break;
           }
-          case "5": case "": picking = false; break;
+          case "5": {
+            await providerSetup("opencode", "opencode/claude-sonnet-4-6", "OpenCode");
+            break;
+          }
+          case "6": {
+            // Codex OAuth — browser-based login
+            try {
+              const { runOAuthFlow } = await import("../auth/oauth.js");
+              const { AuthProfileStore } = await import("../auth/credentials.js");
+              console.log(dim("    Launching browser for OpenAI login..."));
+              const credential = await runOAuthFlow({
+                onUrl: (url) => console.log(dim(`    If browser didn't open: ${url}`)),
+                onProgress: (msg) => console.log(dim(`    ${msg}`)),
+              });
+              const store = new AuthProfileStore();
+              await store.setCredential("openai-codex:default", credential);
+              if (!fallbacks.includes("codex/codex-mini-latest")) {
+                fallbacks.push("codex/codex-mini-latest");
+              }
+              console.log(green(`    Codex configured (${credential.email})`));
+            } catch (err) {
+              console.log(yellow(`    Codex OAuth failed: ${err instanceof Error ? err.message : err}`));
+            }
+            break;
+          }
+          case "7": case "": picking = false; break;
           default: console.log(dim("    Invalid choice")); break;
         }
       }

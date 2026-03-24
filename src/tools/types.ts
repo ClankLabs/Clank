@@ -23,13 +23,23 @@ export interface ToolContext {
   signal?: AbortSignal;
   /** Task registry for background task management */
   taskRegistry?: import("../tasks/registry.js").TaskRegistry;
-  /** Spawn a background task (only available to main agent) */
+  /** Spawn a background task (only available to agents within depth limit) */
   spawnTask?: (opts: {
     agentId: string;
     prompt: string;
     label: string;
     timeoutMs: number;
   }) => Promise<string>;
+  /** Current spawn depth of this agent (0 = main) */
+  spawnDepth?: number;
+  /** Maximum allowed spawn depth */
+  maxSpawnDepth?: number;
+  /** Session key of this agent */
+  sessionKey?: string;
+  /** Kill a running task by ID */
+  killTask?: (taskId: string) => Promise<{ status: string; cascadeKilled?: number }>;
+  /** Send a message to a running child task's engine */
+  messageTask?: (taskId: string, message: string) => Promise<{ status: string; replyText?: string }>;
 }
 
 /** Validation result from tool.validate() */

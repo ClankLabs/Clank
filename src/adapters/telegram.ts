@@ -491,7 +491,9 @@ export class TelegramAdapter extends ChannelAdapter {
         if (tasks.length === 0) return "No background tasks.";
         return "*Background Tasks:*\n" + tasks.map((t) => {
           const elapsed = Math.round(((t.completedAt || Date.now()) - t.startedAt) / 1000);
-          return `• *${t.label.slice(0, 40)}* (${t.agentId}) — ${t.status} (${elapsed}s)`;
+          const depth = t.spawnDepth > 0 ? ` [depth ${t.spawnDepth}]` : "";
+          const kids = t.children.length > 0 ? ` (${t.children.length} children)` : "";
+          return `• *${t.label.slice(0, 40)}* (${t.agentId})${depth}${kids} — ${t.status} (${elapsed}s)`;
         }).join("\n");
       }
 

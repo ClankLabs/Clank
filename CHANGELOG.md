@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.7.0] — 2026-03-23
+
+### Added
+- **OpenAI Codex OAuth** — sign in with your ChatGPT Plus/Pro account to use Codex models without API costs. Full Authorization Code + PKCE flow with browser-based login, token refresh, and credential storage
+- **`clank auth` commands** — `clank auth login` (OAuth flow), `clank auth status` (show credentials), `clank auth logout` (remove credentials)
+- **OpenCode provider** — subscription-based API at `opencode.ai/zen` with many models
+- **Sub-agent depth control** — configurable `maxSpawnDepth` (default 1) prevents infinite nesting. Depth 0 = main, depth 1+ = sub-agent. Leaf agents cannot spawn further
+- **Sub-agent concurrent limits** — configurable `maxConcurrent` (default 8) prevents resource exhaustion
+- **Task kill/steer/message** — parent agents can kill running tasks (with cascade), restart with new instructions (steer), or send messages to running children
+- **Parent-child task tree** — tasks track their children and parent for full tree visibility
+- **Sub-agent system prompt** — spawned agents are told who spawned them and whether they can spawn further
+- **`task.kill` RPC** — kill tasks from Web UI and TUI
+
+### Changed
+- **Spawn system depth-aware** — any agent within the depth limit can spawn (not just the default agent), enabling orchestrator → worker patterns
+
+---
+
 ## [1.6.0] — 2026-03-23
 
 ### Added

@@ -16,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Read version from package.json
-let version = "1.6.0";
+let version = "1.7.0";
 try {
   const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
   version = pkg.version;
@@ -362,5 +362,68 @@ program.action(async () => {
   const { runTui } = await import("./tui.js");
   await runTui({});
 });
+
+// clank auth — manage OAuth authentication
+const auth = program
+  .command("auth")
+  .description("Manage OAuth authentication (Codex login)");
+
+auth
+  .command("login")
+  .description("Sign in with your OpenAI account (ChatGPT Plus/Pro)")
+  .action(async () => {
+    const { runOAuthFlow } = await import("../auth/oauth.js");
+    const { AuthProfileStore } = await import("../auth/credentials.js");
+    try {
+      const credential = await runOAuthFlow({
+        onUrl: (url) => console.log(`\n  If browser didn't open:\n  ${url}\n`),
+        onProgress: (msg) => console.log(`  ${msg}`),
+      });
+      const store = new AuthProfileStore();
+      await store.setCredential("openai-codex:default", credential);
+      console.log(`\n  Authenticated as ${credential.email}`);
+      console.log(`  Account: ${credential.accountId}`);
+      console.log(`  Token expires: ${new Date(credential.expires).toLocaleString()}`);
+      console.log(`\n  Use model "codex/codex-mini-latest" in your agent config.`);
+    } catch (err) {
+      console.error(`  OAuth failed: ${err instanceof Error ? err.message : err}`);
+      process.exit(1);
+    }
+  });
+
+auth
+  .command("status")
+  .description("Show stored authentication credentials")
+  .action(async () => {
+    const { AuthProfileStore } = await import("../auth/credentials.js");
+    const store = new AuthProfileStore();
+    const profiles = await store.listProfiles();
+    if (profiles.length === 0) {
+      console.log("  No stored credentials. Run 'clank auth login' to sign in.");
+      return;
+    }
+    console.log("  Stored credentials:\n");
+    for (const p of profiles) {
+      const cred = await store.getCredential(p.id);
+      const expiry = cred?.type === "oauth" ? new Date(cred.expires).toLocaleString() : "n/a";
+      const expired = cred?.type === "oauth" && Date.now() >= cred.expires;
+      console.log(`  ${p.id}`);
+      console.log(`    Provider: ${p.provider}`);
+      console.log(`    Type: ${p.type}`);
+      if (p.email) console.log(`    Email: ${p.email}`);
+      console.log(`    Expires: ${expiry}${expired ? " (EXPIRED — will auto-refresh)" : ""}`);
+      console.log("");
+    }
+  });
+
+auth
+  .command("logout")
+  .description("Remove stored OAuth credentials")
+  .action(async () => {
+    const { AuthProfileStore } = await import("../auth/credentials.js");
+    const store = new AuthProfileStore();
+    await store.removeCredential("openai-codex:default");
+    console.log("  Credentials removed.");
+  });
 
 program.parse();

@@ -122,6 +122,41 @@ export function createProvider(
       return { provider: p, providerName: "openrouter", modelId, isLocal: false };
     }
 
+    case "codex": {
+      // OpenAI Codex — uses ChatGPT Plus/Pro subscription via OAuth.
+      // The access token is resolved by the gateway before provider creation
+      // and injected into config.codex.apiKey at runtime.
+      const codexConfig = config.codex ?? config["codex"];
+      if (!codexConfig?.apiKey) {
+        throw new Error(
+          `Codex OAuth not configured. Run 'clank auth login' to sign in with your OpenAI account.`,
+        );
+      }
+      const p = new OpenAIProvider({
+        apiKey: codexConfig.apiKey,
+        baseUrl: "https://api.openai.com",
+        model,
+        maxResponseTokens: opts?.maxResponseTokens,
+      });
+      return { provider: p, providerName: "codex", modelId, isLocal: false };
+    }
+
+    case "opencode": {
+      // OpenCode — subscription-based API with many models.
+      // OpenAI-compatible API at https://opencode.ai/zen
+      const ocConfig = config.opencode ?? config["opencode"];
+      if (!ocConfig?.apiKey) {
+        throw new Error(`OpenCode API key required for model ${modelId}`);
+      }
+      const p = new OpenAIProvider({
+        apiKey: ocConfig.apiKey,
+        baseUrl: ocConfig.baseUrl || "https://opencode.ai/zen",
+        model,
+        maxResponseTokens: opts?.maxResponseTokens,
+      });
+      return { provider: p, providerName: "opencode", modelId, isLocal: false };
+    }
+
     case "lmstudio":
     case "llamacpp":
     case "vllm":

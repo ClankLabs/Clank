@@ -147,6 +147,10 @@ export function defaultConfig(): ClankConfig {
         workspace: process.cwd(),
         toolTier: "auto",
         temperature: 0.7,
+        subagents: {
+          maxConcurrent: 8,
+          maxSpawnDepth: 1,
+        },
       },
       list: [],
     },

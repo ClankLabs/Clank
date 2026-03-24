@@ -1,9 +1,10 @@
 /**
- * Task registry — tracks background tasks spawned by the main agent.
+ * Task registry — tracks background tasks spawned by agents.
  *
- * In-memory only (no persistence). Tasks are ephemeral — they exist
- * within a gateway session lifetime. A cleanup interval purges
- * completed tasks older than 30 minutes to prevent memory leaks.
+ * Supports multi-level sub-agent trees with depth tracking,
+ * parent-child relationships, concurrent limits, and cascade
+ * cancellation. In-memory only — tasks are ephemeral within
+ * a gateway session lifetime.
  */
 
 import { randomUUID } from "node:crypto";
@@ -24,6 +25,12 @@ export interface TaskEntry {
   spawnedBy: string;
   /** Whether results have been delivered to the spawning agent */
   delivered: boolean;
+  /** Spawn depth: 0 = spawned by main, 1+ = nested sub-agent */
+  spawnDepth: number;
+  /** Session key of the parent task (for tree tracking) */
+  parentSessionKey?: string;
+  /** Task IDs of children spawned by this task's agent */
+  children: string[];
 }
 
 export interface CreateTaskOpts {
@@ -33,6 +40,8 @@ export interface CreateTaskOpts {
   label: string;
   timeoutMs: number;
   spawnedBy: string;
+  spawnDepth?: number;
+  parentSessionKey?: string;
 }
 
 export class TaskRegistry {
@@ -41,7 +50,6 @@ export class TaskRegistry {
 
   /** Start the cleanup interval */
   start(): void {
-    // Purge completed tasks older than 30 minutes every 10 minutes
     this.cleanupTimer = setInterval(() => this.cleanup(30 * 60_000), 10 * 60_000);
   }
 
@@ -66,17 +74,26 @@ export class TaskRegistry {
       timeoutMs: opts.timeoutMs,
       spawnedBy: opts.spawnedBy,
       delivered: false,
+      spawnDepth: opts.spawnDepth ?? 0,
+      parentSessionKey: opts.parentSessionKey,
+      children: [],
     };
     this.tasks.set(entry.id, entry);
+
+    // If this task was spawned by another task, add it as a child
+    if (opts.parentSessionKey?.startsWith("task:")) {
+      const parentTaskId = opts.parentSessionKey.slice(5);
+      const parent = this.tasks.get(parentTaskId);
+      if (parent) parent.children.push(entry.id);
+    }
+
     return entry;
   }
 
   /** Update a task's fields */
   update(id: string, patch: Partial<Pick<TaskEntry, "status" | "result" | "error" | "completedAt">>): void {
     const task = this.tasks.get(id);
-    if (task) {
-      Object.assign(task, patch);
-    }
+    if (task) Object.assign(task, patch);
   }
 
   /** Get a specific task */
@@ -84,16 +101,40 @@ export class TaskRegistry {
     return this.tasks.get(id);
   }
 
-  /** List all tasks, optionally filtered by status */
+  /** Find a task by its session key (task:{id}) */
+  getBySessionKey(sessionKey: string): TaskEntry | undefined {
+    if (!sessionKey.startsWith("task:")) return undefined;
+    return this.tasks.get(sessionKey.slice(5));
+  }
+
+  /** List all tasks, optionally filtered */
   list(filter?: { status?: TaskEntry["status"]; spawnedBy?: string }): TaskEntry[] {
     let results = Array.from(this.tasks.values());
-    if (filter?.status) {
-      results = results.filter((t) => t.status === filter.status);
-    }
-    if (filter?.spawnedBy) {
-      results = results.filter((t) => t.spawnedBy === filter.spawnedBy);
-    }
+    if (filter?.status) results = results.filter((t) => t.status === filter.status);
+    if (filter?.spawnedBy) results = results.filter((t) => t.spawnedBy === filter.spawnedBy);
     return results.sort((a, b) => b.startedAt - a.startedAt);
+  }
+
+  /** Count running tasks spawned by a specific session */
+  countActiveByParent(spawnedBy: string): number {
+    let count = 0;
+    for (const task of this.tasks.values()) {
+      if (task.spawnedBy === spawnedBy && task.status === "running") count++;
+    }
+    return count;
+  }
+
+  /** Recursively count all active descendants of a session */
+  countActiveDescendants(sessionKey: string): number {
+    let count = 0;
+    for (const task of this.tasks.values()) {
+      if (task.spawnedBy === sessionKey && task.status === "running") {
+        count++;
+        // Recursively count this task's children
+        count += this.countActiveDescendants(`task:${task.id}`);
+      }
+    }
+    return count;
   }
 
   /**
@@ -109,6 +150,35 @@ export class TaskRegistry {
       }
     }
     return ready;
+  }
+
+  /** Cancel a specific task */
+  cancel(taskId: string): TaskEntry | undefined {
+    const task = this.tasks.get(taskId);
+    if (!task || task.status !== "running") return task;
+    task.status = "timeout";
+    task.completedAt = Date.now();
+    task.error = "Cancelled by parent";
+    return task;
+  }
+
+  /**
+   * Cancel all tasks spawned by a session, and recursively cancel
+   * their children. Returns total number of tasks cancelled.
+   */
+  cascadeCancel(sessionKey: string): number {
+    let count = 0;
+    for (const task of this.tasks.values()) {
+      if (task.spawnedBy === sessionKey && task.status === "running") {
+        task.status = "timeout";
+        task.completedAt = Date.now();
+        task.error = "Parent cancelled";
+        count++;
+        // Recursively cancel this task's children
+        count += this.cascadeCancel(`task:${task.id}`);
+      }
+    }
+    return count;
   }
 
   /** Remove completed tasks older than maxAgeMs */

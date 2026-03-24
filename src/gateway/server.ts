@@ -194,6 +194,18 @@ export class GatewayServer {
   }
 
   /**
+   * Compact a session — summarize state, clear context, inject summary.
+   * Used by channel adapters (Telegram /compact command).
+   * Returns the summary text, or null if no active session.
+   */
+  async compactSession(context: RouteContext): Promise<string | null> {
+    const sessionKey = deriveSessionKey(context);
+    const engine = this.engines.get(sessionKey);
+    if (!engine) return null;
+    return engine.compactSession();
+  }
+
+  /**
    * Handle an inbound message from any channel adapter.
    * This is the main entry point for all non-WebSocket messages.
    */
@@ -362,7 +374,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.7.1",
+        version: "1.7.2",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -498,7 +510,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.7.1",
+      version: "1.7.2",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,
@@ -559,6 +571,18 @@ export class GatewayServer {
           const eng = this.engines.get(resetKey);
           if (eng) eng.getContextEngine().clear();
           this.sendResponse(client, frame.id, true);
+          break;
+        }
+
+        case "session.compact": {
+          const compactKey = (frame.params?.sessionKey as string) || client.sessionKey;
+          const compactEngine = this.engines.get(compactKey);
+          if (compactEngine) {
+            const summary = await compactEngine.compactSession();
+            this.sendResponse(client, frame.id, true, { summary });
+          } else {
+            this.sendResponse(client, frame.id, false, "No active session to compact");
+          }
           break;
         }
 
@@ -820,7 +844,13 @@ export class GatewayServer {
       tools: agentConfig?.tools,
     };
 
+    // Determine spawn depth for this engine (needed before system prompt build)
+    const currentDepth = sessionKey.startsWith("task:")
+      ? (this.taskRegistry.getBySessionKey(sessionKey)?.spawnDepth ?? 0) + 1
+      : 0;
+
     // Build system prompt from workspace files + memory
+    // Sub-agents (spawnDepth > 0) get RUNNER.md injected for structured execution
     const compact = agentConfig?.compactPrompt ?? this.config.agents.defaults.compactPrompt ?? false;
     const thinking = agentConfig?.thinking ?? this.config.agents.defaults.thinking ?? "auto";
     const systemPrompt = await buildSystemPrompt({
@@ -829,6 +859,7 @@ export class GatewayServer {
       channel,
       compact,
       thinking,
+      spawnDepth: currentDepth,
     });
 
     // Inject memory context into system prompt — use a smaller budget for
@@ -839,10 +870,6 @@ export class GatewayServer {
       ? systemPrompt + "\n\n---\n\n" + memoryBlock
       : systemPrompt;
 
-    // Determine spawn depth for this engine
-    const currentDepth = sessionKey.startsWith("task:")
-      ? (this.taskRegistry.getBySessionKey(sessionKey)?.spawnDepth ?? 0) + 1
-      : 0;
     const maxSpawnDepth = this.config.agents.defaults.subagents?.maxSpawnDepth ?? 1;
     const maxConcurrent = this.config.agents.defaults.subagents?.maxConcurrent ?? 8;
 

@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.7.2] — 2026-03-24
+
+### Added
+- **Agent runner template (RUNNER.md)** — structured playbook for sub-agents with task decomposition, tool patterns, and report format. Automatically injected into system prompt for spawned tasks so the model doesn't have to figure out the approach from scratch
+- **`/compact` command** — save model state, clear context, continue where you left off. Available in TUI and Telegram. Uses the LLM to summarize current task state, then clears the conversation and injects the summary as the starting point
+- **CLI/TUI ASCII banner** — Clank logo displayed on startup in both direct chat and TUI mode
+
+### Fixed
+- **Telegram typing indicator leak** — typing indicator now cleared in `finally` block instead of `try` block, so it always stops even if an error occurs during streaming or message editing. Previously, errors would leave the chat permanently showing "typing..."
+- **Install instructions** — split `npm install` and `clank setup` into separate code blocks in README so copying the block doesn't auto-run setup before install finishes
+- **CLI chat version** — was hardcoded as `v0.1.0`, now shows correct version
+
+---
+
 ## [1.7.1] — 2026-03-23
 
 ### Added

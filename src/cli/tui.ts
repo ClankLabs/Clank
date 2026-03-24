@@ -86,7 +86,11 @@ export async function runTui(opts: {
   }
 
   console.log("");
-  console.log(bold("  Clank TUI") + dim(` | connecting to ${wsUrl}...`));
+  console.log(cyan("   ___  _             _   "));
+  console.log(cyan("  / __|| | __ _  _ _ | |__"));
+  console.log(cyan(" | (__ | |/ _` || ' \\| / /"));
+  console.log(cyan("  \\___||_|\\__,_||_||_|_\\_\\"));
+  console.log(dim(`  TUI | connecting to ${wsUrl}...`));
 
   // Connect to gateway
   const ws = new WebSocket(wsUrl);
@@ -96,7 +100,7 @@ export async function runTui(opts: {
     // Send connect handshake
     ws.send(JSON.stringify({
       type: "connect",
-      params: { auth: { token }, mode: "tui", version: "1.7.1" },
+      params: { auth: { token }, mode: "tui", version: "1.7.2" },
     }));
   });
 
@@ -291,6 +295,11 @@ function handleFrame(state: TuiState, frame: any): void {
     const res = frame as ResponseFrame;
     if (!res.ok && res.error) {
       console.log(red(`\n  Error: ${res.error}`));
+    } else if (res.ok && res.data?.summary) {
+      // Compact response — show the summary
+      const summary = (res.data.summary as string).slice(0, 500);
+      console.log(green("  Session compacted.") + dim(" Context cleared, state saved."));
+      console.log(dim(`  Summary:\n${summary}`));
     }
     state.streaming = false;
   }
@@ -309,6 +318,7 @@ async function handleSlashCommand(state: TuiState, input: string, rl: any): Prom
       console.log(dim("    /model [id]          — Show current model"));
       console.log(dim("    /think               — Toggle thinking display"));
       console.log(dim("    /tools               — Toggle tool output"));
+      console.log(dim("    /compact             — Save state, clear context, continue"));
       console.log(dim("    /new                 — Start new session"));
       console.log(dim("    /reset               — Reset current session"));
       console.log(dim("    /exit                — Exit"));
@@ -370,6 +380,15 @@ async function handleSlashCommand(state: TuiState, input: string, rl: any): Prom
     case "tools":
       state.showToolOutput = !state.showToolOutput;
       console.log(dim(`  Tool output: ${state.showToolOutput ? "on" : "off"}`));
+      break;
+
+    case "compact":
+      console.log(dim("  Compacting session..."));
+      state.ws?.send(JSON.stringify({
+        type: "req", id: ++state.reqId, method: "session.compact",
+        params: { sessionKey: state.sessionKey },
+      }));
+      // Response handled in frame handler — user sees summary
       break;
 
     case "new":

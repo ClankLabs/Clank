@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ItsTrag1c/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.7.1-blue.svg" alt="Version" /></a>
+  <a href="https://github.com/ItsTrag1c/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.7.2-blue.svg" alt="Version" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
   <a href="https://www.npmjs.com/package/@tractorscorch/clank"><img src="https://img.shields.io/npm/v/@tractorscorch/clank.svg" alt="npm" /></a>
   <a href="https://github.com/ItsTrag1c/Clank/stargazers"><img src="https://img.shields.io/github/stars/ItsTrag1c/Clank.svg" alt="Stars" /></a>
@@ -56,7 +56,17 @@ Clank is a personal AI gateway — **one daemon, many frontends**. It connects y
 
 ```bash
 npm install -g @tractorscorch/clank
+```
+
+Then run the setup wizard (creates config, picks your model):
+
+```bash
 clank setup
+```
+
+Start chatting:
+
+```bash
 clank
 ```
 
@@ -64,7 +74,14 @@ clank
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ItsTrag1c/Clank/main/install.sh | bash
+```
+
+Then run setup and start:
+
+```bash
 clank setup
+```
+```bash
 clank
 ```
 
@@ -75,7 +92,7 @@ That's it. Setup auto-detects your local models, configures the gateway, and get
 | Platform | Download |
 |----------|----------|
 | **npm** (all platforms) | `npm install -g @tractorscorch/clank` |
-| **macOS** (Apple Silicon) | [Clank_1.7.1_macos](https://github.com/ItsTrag1c/Clank/releases/latest/download/Clank_1.7.1_macos) |
+| **macOS** (Apple Silicon) | [Clank_1.7.2_macos](https://github.com/ItsTrag1c/Clank/releases/latest/download/Clank_1.7.2_macos) |
 
 ## Security Notice
 

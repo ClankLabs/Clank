@@ -22,6 +22,9 @@ const WORKSPACE_FILES = [
   "MEMORY.md",
 ];
 
+/** Extra file loaded only for sub-agents (spawnDepth > 0) */
+const SUB_AGENT_FILE = "RUNNER.md";
+
 /**
  * Build the complete system prompt for an agent.
  */
@@ -31,9 +34,11 @@ export async function buildSystemPrompt(opts: {
   channel?: string;
   compact?: boolean;
   thinking?: "on" | "off" | "auto";
+  spawnDepth?: number;
 }): Promise<string> {
   const parts: string[] = [];
   const compact = opts.compact ?? false;
+  const isSubAgent = (opts.spawnDepth ?? 0) > 0;
 
   if (!compact) {
     // Full mode: load workspace files (SOUL.md, USER.md, etc.)
@@ -41,6 +46,15 @@ export async function buildSystemPrompt(opts: {
     if (workspaceContent) {
       parts.push(workspaceContent);
       parts.push("---");
+    }
+
+    // Sub-agents get the RUNNER.md playbook for structured execution
+    if (isSubAgent) {
+      const runnerContent = await loadSingleFile(opts.workspaceDir, SUB_AGENT_FILE);
+      if (runnerContent) {
+        parts.push(runnerContent);
+        parts.push("---");
+      }
     }
   }
 
@@ -129,6 +143,20 @@ async function loadWorkspaceFiles(workspaceDir: string): Promise<string | null> 
   return sections.length > 0 ? sections.join("\n\n---\n\n") : null;
 }
 
+/** Load a single workspace file by name */
+async function loadSingleFile(workspaceDir: string, filename: string): Promise<string | null> {
+  const filePath = join(workspaceDir, filename);
+  if (existsSync(filePath)) {
+    try {
+      const content = await readFile(filePath, "utf-8");
+      return content.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 /** Load project-specific memory (.clank.md) */
 async function loadProjectMemory(projectRoot: string): Promise<string | null> {
   const candidates = [".clank.md", ".clankbuild.md", ".llamabuild.md"];
@@ -156,7 +184,7 @@ export async function ensureWorkspaceFiles(workspaceDir: string, templateDir: st
   const { mkdir, copyFile } = await import("node:fs/promises");
   await mkdir(workspaceDir, { recursive: true });
 
-  for (const filename of [...WORKSPACE_FILES, "BOOTSTRAP.md", "HEARTBEAT.md"]) {
+  for (const filename of [...WORKSPACE_FILES, "BOOTSTRAP.md", "HEARTBEAT.md", "RUNNER.md"]) {
     const target = join(workspaceDir, filename);
     const source = join(templateDir, filename);
     if (!existsSync(target) && existsSync(source)) {

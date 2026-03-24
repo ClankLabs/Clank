@@ -51,6 +51,7 @@ export class TelegramAdapter extends ChannelAdapter {
         { command: "help", description: "Show available commands" },
         { command: "new", description: "Start a new session" },
         { command: "reset", description: "Clear current session" },
+        { command: "compact", description: "Save state and clear context" },
         { command: "status", description: "Agent status and info" },
         { command: "agents", description: "List available agents" },
         { command: "tasks", description: "Show background tasks" },
@@ -211,12 +212,13 @@ export class TelegramAdapter extends ChannelAdapter {
                 await ctx.api.sendMessage(chatId, chunk);
               }
             }
-            clearInterval(typingInterval);
             console.log(`  Telegram: response complete (${response?.length || 0} chars)`);
           } catch (err: unknown) {
             const errMsg = err instanceof Error ? err.message : String(err);
             console.error(`  Telegram: message handler error — ${errMsg}`);
             await ctx.api.sendMessage(chatId, `⚠️ Error: ${errMsg.slice(0, 200)}`).catch(() => {});
+          } finally {
+            clearInterval(typingInterval);
           }
         };
 
@@ -446,6 +448,7 @@ export class TelegramAdapter extends ChannelAdapter {
           "💬 *Chat*",
           "/new — Start a new session",
           "/reset — Clear current session history",
+          "/compact — Save state, clear context, continue",
           "",
           "📊 *Info*",
           "/status — Agent, model, and session info",
@@ -543,6 +546,18 @@ export class TelegramAdapter extends ChannelAdapter {
           ? "✨ New session started. Send a message to begin."
           : "🗑 Session cleared. History erased.";
 
+      case "compact": {
+        if (!this.gateway) return "Gateway not connected.";
+        const summary = await this.gateway.compactSession({
+          channel: "telegram",
+          peerId: chatId,
+          peerKind: isGroup ? "group" : "dm",
+        });
+        if (!summary) return "Nothing to compact — no active session.";
+        const preview = summary.length > 300 ? summary.slice(0, 300) + "..." : summary;
+        return `📦 *Session compacted*\n\nContext cleared and state saved. The agent will continue where it left off.\n\n_Summary:_\n${preview}`;
+      }
+
       case "model": {
         const model = this.config?.agents?.defaults?.model?.primary || "unknown";
         const fallbacks = this.config?.agents?.defaults?.model?.fallbacks || [];
@@ -620,7 +635,7 @@ export class TelegramAdapter extends ChannelAdapter {
       }
 
       case "version": {
-        return `🔧 *Clank* v1.7.1`;
+        return `🔧 *Clank* v1.7.2`;
       }
 
       default:

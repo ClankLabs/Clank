@@ -204,10 +204,14 @@ export async function runChat(opts: {
     console.error(red(`Error: ${message}${recoverable ? " (recoverable)" : ""}`));
   });
 
-  // Print header
+  // Print banner
   console.log("");
-  console.log(bold("Clank") + dim(` v0.1.0 | ${resolved.modelId} | ${identity.toolTier} tier`));
-  console.log(dim("Type your message. Press Ctrl+C to exit.\n"));
+  console.log(cyan("   ___  _             _   "));
+  console.log(cyan("  / __|| | __ _  _ _ | |__"));
+  console.log(cyan(" | (__ | |/ _` || ' \\| / /"));
+  console.log(cyan("  \\___||_|\\__,_||_||_|_\\_\\"));
+  console.log(dim(`  v1.7.2 | ${resolved.modelId} | ${identity.toolTier} tier`));
+  console.log(dim("  Type your message. Press Ctrl+C to exit.\n"));
 
   // Interactive readline loop
   const rl = createInterface({

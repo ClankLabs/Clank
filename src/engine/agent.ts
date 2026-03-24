@@ -531,6 +531,87 @@ export class AgentEngine extends EventEmitter {
     return this.contextEngine;
   }
 
+  /**
+   * Compact: summarize current state, clear context, inject summary.
+   * Returns the summary so callers can display it.
+   */
+  async compactSession(): Promise<string> {
+    const messages = this.contextEngine.getMessages();
+
+    if (messages.length < 3) {
+      return "Nothing to compact — session is too short.";
+    }
+
+    // Build a state snapshot from the conversation for the model to summarize
+    const conversationText = messages
+      .slice(-30) // last 30 messages max to keep the summary prompt manageable
+      .map((m) => {
+        const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+        const truncated = content.length > 400 ? content.slice(0, 400) + "..." : content;
+        return `${m.role}: ${truncated}`;
+      })
+      .join("\n\n");
+
+    const summaryPrompt = [
+      "You are summarizing a conversation for context continuity.",
+      "The user is compacting their session — they want to clear context but continue seamlessly.",
+      "",
+      "Produce a concise state summary covering:",
+      "- What task(s) the user is working on",
+      "- Key decisions made so far",
+      "- Files created, modified, or discussed",
+      "- Current progress and what comes next",
+      "- Any important context (preferences, constraints, blockers)",
+      "",
+      "Format as bullet points. Be brief but complete — this is the ONLY context the model will have when resuming.",
+      "",
+      "Conversation:",
+      conversationText,
+    ].join("\n");
+
+    let summary = "";
+
+    // Use the resolved provider to generate the summary
+    if (this.resolvedProvider) {
+      try {
+        for await (const event of this.resolvedProvider.provider.stream(
+          [{ role: "user", content: summaryPrompt }],
+          "You are a conversation summarizer. Output only the summary.",
+          [],
+        )) {
+          if (event.type === "text") {
+            summary += event.content;
+          }
+        }
+      } catch {
+        // Fallback: mechanical summary from last few messages
+        summary = messages.slice(-6).map((m) => {
+          const content = typeof m.content === "string" ? m.content : "";
+          return `- [${m.role}] ${content.slice(0, 150)}`;
+        }).join("\n");
+      }
+    }
+
+    if (!summary.trim()) {
+      summary = "Session was active but summary generation failed. Ask the user for context.";
+    }
+
+    // Clear context and inject the summary as the starting point
+    this.contextEngine.clear();
+    this.contextEngine.ingest({
+      role: "user",
+      content: `[Session compacted — previous context summarized below]\n\n${summary.trim()}\n\n---\nThe session was compacted by the user. Continue from where you left off. You have full context above.`,
+      _compacted: true,
+    });
+
+    // Save the compacted session
+    if (this.currentSession) {
+      await this.sessionStore.saveMessages(this.currentSession.id, this.contextEngine.getMessages());
+    }
+
+    return summary.trim();
+  }
+
   /** Destroy the engine and clean up */
   destroy(): void {
     this.cancel();

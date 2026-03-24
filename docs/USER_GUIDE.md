@@ -82,6 +82,7 @@ Configure in config:
 | `/model` | Show current model |
 | `/think` | Toggle thinking block visibility |
 | `/tools` | Toggle tool output display |
+| `/compact` | Save state, clear context, continue where you left off |
 | `/new` | Start a new session |
 | `/reset` | Clear current session |
 | `/exit` | Quit |
@@ -107,6 +108,7 @@ Commands are registered in Telegram's bot menu — they appear when you type `/`
 | `/help` | Show all commands |
 | `/new` | Start a fresh session |
 | `/reset` | Clear current session history |
+| `/compact` | Save state, clear context, continue |
 | `/status` | Model, agents, tasks, uptime |
 | `/agents` | List agents with their models |
 | `/agent <name>` | Switch to a different agent |
@@ -324,6 +326,7 @@ Clank remembers across sessions through several mechanisms:
 | `TOOLS.md` | Tool access configuration |
 | `BOOTSTRAP.md` | First-conversation script (auto-deleted) |
 | `HEARTBEAT.md` | Periodic check definitions |
+| `RUNNER.md` | Sub-agent playbook (auto-injected for spawned tasks) |
 
 Edit these files to customize behavior. The agent can also edit them through conversation.
 

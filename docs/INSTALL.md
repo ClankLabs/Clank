@@ -155,6 +155,7 @@ During setup, or afterward:
 | `/help` | Show all commands |
 | `/new` | Start a new session |
 | `/reset` | Clear current session |
+| `/compact` | Save state, clear context, continue |
 | `/status` | Agent, model, tasks, uptime |
 | `/agents` | List available agents |
 | `/agent <name>` | Switch to a different agent |
@@ -375,7 +376,7 @@ Checks config, gateway, models, sessions, and workspace. Shows issues with sugge
 | Telegram not responding | Check bot token, ensure only one instance polls the same token |
 | Permission denied | Don't run as admin. Clank uses user-level paths. |
 | Model refuses to use tools | Restart gateway — system prompt updates on restart |
-| Telegram hangs on "typing" | Restart gateway. Old versions had a confirmation hang bug. |
+| Telegram hangs on "typing" | Update to v1.7.2+ (typing indicator leak fixed). Restart gateway. |
 
 ---
 

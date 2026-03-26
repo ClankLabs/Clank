@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/ItsTrag1c/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.7.3-blue.svg" alt="Version" /></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
+  <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.npmjs.com/package/@tractorscorch/clank"><img src="https://img.shields.io/npm/v/@tractorscorch/clank.svg" alt="npm" /></a>
   <a href="https://github.com/ItsTrag1c/Clank/stargazers"><img src="https://img.shields.io/github/stars/ItsTrag1c/Clank.svg" alt="Stars" /></a>
 </p>
@@ -92,6 +92,24 @@ That's it. Setup auto-detects your local models, configures the gateway, and get
 |----------|----------|
 | **npm** (all platforms) | `npm install -g @tractorscorch/clank` |
 | **macOS** (Apple Silicon) | [Clank_1.7.3_macos](https://github.com/ItsTrag1c/Clank/releases/latest/download/Clank_1.7.3_macos) |
+
+## Wrench — Purpose-Built Agentic Model
+
+[**Wrench**](https://clanklabs.dev/wrench) is our custom fine-tuned model, built specifically for Clank. It scores **72/75 (96%)** on agentic benchmarks — matching Claude Sonnet — while running locally on consumer hardware.
+
+- **Base:** Qwen3.5-35B-A3B (3B active parameters, MoE)
+- **Format:** Q4_K_M GGUF (~20GB)
+- **Min GPU:** 16GB VRAM
+- **Download:** [HuggingFace](https://huggingface.co/ClankLabs/Wrench-35B-A3B-Q4_K_M-GGUF)
+
+```bash
+# Ollama
+ollama create wrench -f Modelfile
+# Set as primary model in Clank config: "primary": "ollama/wrench"
+
+# llama.cpp
+./llama-server -m wrench-Q4_K_M.gguf -c 8192 -ngl 99
+```
 
 ## Security Notice
 

@@ -20,7 +20,8 @@
   <a href="https://github.com/ItsTrag1c/Clank/blob/main/docs/INSTALL.md">Install Guide</a> ·
   <a href="https://github.com/ItsTrag1c/Clank/blob/main/docs/USER_GUIDE.md">User Guide</a> ·
   <a href="https://github.com/ItsTrag1c/Clank/blob/main/CHANGELOG.md">Changelog</a> ·
-  <a href="https://x.com/Clank_Labs">Twitter</a>
+  <a href="https://x.com/Clank_Labs">Twitter</a> ·
+  <a href="https://reddit.com/u/ClankLabs">Reddit</a>
 </p>
 
 ---
@@ -216,6 +217,7 @@ See [SECURITY.md](SECURITY.md) for the full security model.
 | **GitHub** | [ItsTrag1c/Clank](https://github.com/ItsTrag1c/Clank) |
 | **npm** | [npmjs.com/package/@tractorscorch/clank](https://www.npmjs.com/package/@tractorscorch/clank) |
 | **Twitter/X** | [@Clank_Labs](https://x.com/Clank_Labs) |
+| **Reddit** | [u/ClankLabs](https://reddit.com/u/ClankLabs) |
 | **Legacy** | [Clank-Legacy](https://github.com/ItsTrag1c/Clank-Legacy) (archived CLI v2.7.0 + Desktop v2.6.1) |
 
 ## Requirements

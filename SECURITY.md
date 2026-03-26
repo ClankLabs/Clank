@@ -7,7 +7,7 @@
 | 1.7.x | Supported (current) |
 | < 1.7.0 | Upgrade recommended |
 
-Legacy versions (CLI v2.7.0, Desktop v2.6.1) have been deleted and are no longer available.
+Legacy versions have been deleted and are no longer available.
 
 ## Reporting a Vulnerability
 

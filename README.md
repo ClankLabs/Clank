@@ -218,7 +218,6 @@ See [SECURITY.md](SECURITY.md) for the full security model.
 | **npm** | [npmjs.com/package/@tractorscorch/clank](https://www.npmjs.com/package/@tractorscorch/clank) |
 | **Twitter/X** | [@Clank_Labs](https://x.com/Clank_Labs) |
 | **Reddit** | [u/ClankLabs](https://reddit.com/u/ClankLabs) |
-| **Legacy** | [Clank-Legacy](https://github.com/ItsTrag1c/Clank-Legacy) (archived CLI v2.7.0 + Desktop v2.6.1) |
 
 ## Requirements
 

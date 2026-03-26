@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.7.4] — 2026-03-26
+
+### Fixed
+- **Telegram/Discord typing indicator crash** — `sendChatAction` and `sendTyping` calls now fail silently instead of aborting message processing. Telegram rate-limits typing indicators (429 Too Many Requests), which would kill the entire message handler after sustained conversations. Discord's `sendTyping` gets the same treatment for consistency
+
+---
+
 ## [1.7.3] — 2026-03-25
 
 ### Added

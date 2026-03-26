@@ -119,7 +119,7 @@ export class TelegramAdapter extends ChannelAdapter {
 
           try {
             console.log(`  Telegram: processing message from ${userId} in ${chatId}`);
-            await ctx.api.sendChatAction(chatId, "typing");
+            await ctx.api.sendChatAction(chatId, "typing").catch(() => {});
 
             // Keep sending "typing" every 4s while the model processes
             const typingInterval = setInterval(() => {
@@ -253,7 +253,7 @@ export class TelegramAdapter extends ChannelAdapter {
           if (!this.gateway || !this.config) return;
 
           try {
-            await ctx.api.sendChatAction(chatId, "typing");
+            await ctx.api.sendChatAction(chatId, "typing").catch(() => {});
 
             const file = await ctx.api.getFile(msg.voice.file_id);
             const fileUrl = `https://api.telegram.org/file/bot${telegramConfig.botToken}/${file.file_path}`;
@@ -635,7 +635,7 @@ export class TelegramAdapter extends ChannelAdapter {
       }
 
       case "version": {
-        return `🔧 *Clank* v1.7.3`;
+        return `🔧 *Clank* v1.7.4`;
       }
 
       default:

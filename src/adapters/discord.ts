@@ -59,7 +59,7 @@ export class DiscordAdapter extends ChannelAdapter {
         if (!this.gateway) return;
 
         try {
-          await message.channel.sendTyping();
+          await message.channel.sendTyping().catch(() => {});
 
           const response = await this.gateway.handleInboundMessage(
             {

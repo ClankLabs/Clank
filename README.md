@@ -96,7 +96,7 @@ That's it. Setup auto-detects your local models, configures the gateway, and get
 
 ## Wrench — Purpose-Built Agentic Model
 
-[**Wrench**](https://clanklabs.dev/wrench) is our custom fine-tuned model, built specifically for Clank. It scores **72/75 (96%)** on agentic benchmarks — matching Claude Sonnet — while running locally on consumer hardware.
+[**Wrench**](https://clanklabs.dev/wrench) is our custom fine-tuned model, built specifically for Clank. It scores **113/120 (94.2%)** on our 40-prompt agentic benchmark across 8 categories — matching Claude Sonnet — while running locally on consumer hardware.
 
 - **Base:** Qwen3.5-35B-A3B (3B active parameters, MoE)
 - **Format:** Q4_K_M GGUF (~20GB)

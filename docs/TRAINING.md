@@ -25,7 +25,7 @@ The MoE architecture is the key choice here. 35B total parameters means the mode
 
 ## Dataset
 
-**1,113 hand-crafted examples** across 15 categories:
+**1,147 hand-crafted examples** across 15 categories:
 
 | Category | Purpose |
 |----------|---------|
@@ -91,12 +91,19 @@ Every example follows the ChatML format with system, user, and assistant turns. 
 - **Benchmark:** 66/75
 - **Notes:** Added 80 examples in the `always-use-tools` category to fix cases where the model would answer from memory instead of using available tools. The loss dropped, but benchmark performance regressed. The model started *inventing fake tools* that didn't exist — it learned "always use a tool" without learning "only use tools that exist." This was the most important lesson of the project (see Lessons Learned).
 
-### v4 — Recovery (Current)
+### v4 — Recovery
 - **Examples:** 1,113
 - **Epochs:** 2
 - **Final loss:** 0.1479
-- **Benchmark:** 72/75 (Sonnet-tier)
+- **Benchmark:** 72/75 (Sonnet-tier on 25-prompt suite)
 - **Notes:** Added 30 `tool-restraint` examples that explicitly demonstrate when NOT to call a tool. This fixed the hallucinated-tool problem from v3 and pushed benchmark scores to their highest point. The model now reliably uses tools when appropriate and declines to when they aren't available.
+
+### v5 — Expanded Benchmark (Current)
+- **Examples:** 1,147
+- **Epochs:** 2
+- **Final loss:** 0.1452
+- **Benchmark:** 113/120 (Sonnet-tier on 40-prompt suite across 8 categories)
+- **Notes:** Expanded benchmark from 25 prompts / 5 categories to 40 prompts / 8 categories, adding Planning & Reasoning, Tool Format Correctness, and Safety & Restraint. Added 34 new training examples targeting the new categories. Category scores: Basic Tool Use 15/15, Multi-Step Tasks 14/15, Error Recovery 13/15, Response Quality 15/15, System Prompt Following 14/15, Planning & Reasoning 14/15, Tool Format Correctness 13/15, Safety & Restraint 15/15.
 
 ## How to Reproduce
 
@@ -115,7 +122,7 @@ Every example follows the ChatML format with system, user, and assistant turns. 
    ```bash
    python train.py \
      --model_name Qwen/Qwen3.5-35B-A3B \
-     --dataset ./data/wrench_v4.jsonl \
+     --dataset ./data/wrench_v5.jsonl \
      --lora_rank 64 \
      --lora_alpha 128 \
      --batch_size 1 \
@@ -155,7 +162,7 @@ v3 had the lowest training loss (0.1338) and the worst benchmark score. Loss mea
 
 ### Hand-crafted data beats scale
 
-1,113 examples is tiny by industry standards. But because every example targets a specific, observed failure mode, the signal-to-noise ratio is extremely high. Each example teaches exactly one thing. No padding, no filler, no duplicates.
+1,147 examples is tiny by industry standards. But because every example targets a specific, observed failure mode, the signal-to-noise ratio is extremely high. Each example teaches exactly one thing. No padding, no filler, no duplicates.
 
 ### MoE models are underrated for fine-tuning
 

@@ -27,18 +27,18 @@ All training data is hand-crafted. No synthetic generation, no scraping. Every e
 
 The MoE architecture is the key choice here. 35B total parameters means the model has significant capacity, but only 3B are active per forward pass, making it feasible to run locally on consumer hardware. After quantization it fits comfortably in ~20GB of VRAM.
 
-### Wrench 8B (Compact)
+### Wrench 9B (Compact)
 
 | Property | Value |
 |----------|-------|
 | **Model** | Qwen3.5-9B |
 | **Architecture** | Dense transformer |
-| **Total parameters** | 8B |
-| **Active parameters** | 8B per token |
+| **Total parameters** | 9B |
+| **Active parameters** | 9B per token |
 | **License** | Apache 2.0 |
 | **Creator** | Alibaba Cloud |
 
-The compact variant for machines with limited VRAM. Dense architecture means all parameters are active every forward pass, but at 8B total it quantizes down to ~5GB GGUF — comfortably within 8GB VRAM cards.
+The compact variant for machines with limited VRAM. Dense architecture means all parameters are active every forward pass, but at 9B total it quantizes down to ~5GB GGUF — comfortably within 8GB VRAM cards.
 
 ## Dataset
 
@@ -122,14 +122,14 @@ Every example follows the ChatML format with system, user, and assistant turns. 
 - **Benchmark:** 113/120 (Sonnet-tier on 40-prompt suite across 8 categories)
 - **Notes:** Expanded benchmark from 25 prompts / 5 categories to 40 prompts / 8 categories, adding Planning & Reasoning, Tool Format Correctness, and Safety & Restraint. Added 34 new training examples targeting the new categories. Category scores: Basic Tool Use 15/15, Multi-Step Tasks 14/15, Error Recovery 13/15, Response Quality 15/15, System Prompt Following 14/15, Planning & Reasoning 14/15, Tool Format Correctness 13/15, Safety & Restraint 15/15.
 
-### Wrench 8B v1 (Current — 8B)
+### Wrench 9B v1 (Current)
 - **Base model:** Qwen3.5-9B
 - **Examples:** 1,251
 - **Epochs:** 2
 - **Benchmark:** 105/120 (87.5% on same 40-prompt suite)
 - **Format:** Q4_K_M GGUF (~5GB)
 - **Min GPU:** 8GB VRAM
-- **Notes:** Same training methodology and LoRA hyperparameters as the 35B, applied to a dense 8B model for lower-end hardware. Uses an expanded dataset (1,251 examples vs 1,147 for 35B v5). Scores lower than the 35B as expected from the smaller parameter count, but still solid agentic performance for the weight class.
+- **Notes:** Same training methodology and LoRA hyperparameters as the 35B, applied to a dense 9B model for lower-end hardware. Uses an expanded dataset (1,251 examples vs 1,147 for 35B v5). Scores lower than the 35B as expected from the smaller parameter count, but still solid agentic performance for the weight class.
 
 ## How to Reproduce
 

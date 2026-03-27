@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.7.6] — 2026-03-27
+
+### Improved
+- **Web fetch returns readable text** — `web_fetch` now strips HTML tags, scripts, styles, and navigation from web pages, returning clean plain text. Local models no longer choke on raw HTML soup when fetching URLs. JSON responses are still returned as-is.
+
+### Fixed
+- **Wrench 9B naming** — README now correctly refers to Wrench 9B (was "8B"), with HuggingFace download link added
+
+---
+
 ## [1.7.5] — 2026-03-27
 
 ### Changed

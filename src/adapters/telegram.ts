@@ -635,7 +635,7 @@ export class TelegramAdapter extends ChannelAdapter {
       }
 
       case "version": {
-        return `🔧 *Clank* v1.7.5`;
+        return `🔧 *Clank* v1.7.6`;
       }
 
       default:

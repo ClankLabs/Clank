@@ -99,14 +99,16 @@ export class DiscordAdapter extends ChannelAdapter {
                 message.reply(`⚠️ ${msg.slice(0, 200)}`).catch(() => {});
               },
               onConfirm: (actions: unknown[], resolve: (v: boolean | "always") => void) => {
-                const action = (actions as Array<{ name?: string; safetyLevel?: string }>)[0];
-                const toolName = action?.name || "unknown tool";
+                const action = (actions as Array<{ toolName?: string; description?: string; safetyLevel?: string }>)[0];
+                const toolName = action?.toolName || "unknown tool";
+                const description = action?.description || "";
                 const level = action?.safetyLevel || "high";
                 const confirmId = `confirm_${Date.now()}`;
 
                 pendingConfirms.set(confirmId, resolve);
 
                 const emoji = toolEmoji(toolName);
+                const desc = description ? `\n${description}` : "";
                 const row = new discord.ActionRowBuilder().addComponents(
                   new discord.ButtonBuilder()
                     .setCustomId(`${confirmId}:yes`)
@@ -123,7 +125,7 @@ export class DiscordAdapter extends ChannelAdapter {
                 );
 
                 message.reply({
-                  content: `${emoji} **Tool approval needed**\n\n\`${toolName}\` (${level} risk)\n\nApprove this action?`,
+                  content: `${emoji} **Tool approval needed**\n\n\`${toolName}\` (${level} risk)${desc}\n\nApprove this action?`,
                   components: [row],
                 }).catch(() => {});
 

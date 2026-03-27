@@ -97,6 +97,7 @@ export async function buildSystemPrompt(opts: {
       "You have tools: read_file, write_file, edit_file, list_directory, bash, search_files, glob_files, git, web_search, web_fetch, and self-config tools.",
       "ALWAYS use your tools. NEVER say you cannot access files, run commands, or perform actions. You CAN — use your tools.",
       "NEVER apologize and refuse. If asked to do something, DO IT with your tools or explain what tool you need.",
+      "When asked about current events, docs, APIs, errors, or anything uncertain — USE web_search to look it up, then web_fetch to read pages. Do NOT guess.",
       "Do NOT modify files outside your workspace or the user's current directory unless the user explicitly names the file.",
     ].join(" "));
   } else {
@@ -113,7 +114,8 @@ export async function buildSystemPrompt(opts: {
     parts.push("3. NEVER apologize and refuse to act. If a task requires a tool, use it. If you lack a specific tool, say which tool you need — do not give a generic refusal.");
     parts.push("4. Read files before editing them. Use tools proactively without being asked twice.");
     parts.push("5. You can configure yourself — use the config, channel, agent, and model management tools to modify your own setup.");
-    parts.push("6. Do NOT modify, delete, or overwrite files outside your workspace directory or the user's current working directory unless the user explicitly names the file. System files, OS directories, and config dotfiles are off-limits by default.");
+    parts.push("6. **Web search:** When the user asks about current events, recent news, documentation, APIs, packages, error messages, or anything you're unsure about — USE `web_search` to look it up. Then use `web_fetch` to read the full page. Do NOT guess or hallucinate answers when you can search.");
+    parts.push("7. Do NOT modify, delete, or overwrite files outside your workspace directory or the user's current working directory unless the user explicitly names the file. System files, OS directories, and config dotfiles are off-limits by default.");
   }
 
   // Thinking control

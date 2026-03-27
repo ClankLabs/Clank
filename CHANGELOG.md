@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.8.1] — 2026-03-27
+
+### Fixed
+- **Inline tool approvals** — Telegram and Discord now show the actual tool name and description instead of "unknown tool" (property name mismatch: `name` → `toolName`)
+
+### Changed
+- **Web tools promoted to core tier** — `web_search` and `web_fetch` are now available at all tool tiers (core, auto, full). Previously only available in "full" or via keyword triggers in "auto", which meant local models couldn't use them even with an API key configured.
+- **System prompt** — added explicit web search guidance telling models to use `web_search` for current events, docs, APIs, and uncertain answers instead of guessing
+
+---
+
 ## [1.8.0] — 2026-03-27
 
 ### Added

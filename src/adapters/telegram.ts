@@ -191,8 +191,9 @@ export class TelegramAdapter extends ChannelAdapter {
                   bot.api.sendMessage(chatId, `⚠️ ${message.slice(0, 200)}`).catch(() => {});
                 },
                 onConfirm: (actions: unknown[], resolve: (v: boolean | "always") => void) => {
-                  const action = (actions as Array<{ name?: string; safetyLevel?: string }>)[0];
-                  const toolName = action?.name || "unknown tool";
+                  const action = (actions as Array<{ toolName?: string; description?: string; safetyLevel?: string }>)[0];
+                  const toolName = action?.toolName || "unknown tool";
+                  const description = action?.description || "";
                   const level = action?.safetyLevel || "high";
                   const confirmId = `confirm_${Date.now()}`;
 
@@ -205,9 +206,10 @@ export class TelegramAdapter extends ChannelAdapter {
                     .text("❌ Deny", `${confirmId}:no`);
 
                   const emoji = toolEmoji(toolName);
+                  const desc = description ? `\n${description}` : "";
                   bot.api.sendMessage(
                     chatId,
-                    `${emoji} *Tool approval needed*\n\n\`${toolName}\` (${level} risk)\n\nApprove this action?`,
+                    `${emoji} *Tool approval needed*\n\n\`${toolName}\` (${level} risk)${desc}\n\nApprove this action?`,
                     { parse_mode: "Markdown", reply_markup: keyboard },
                   ).catch(() => {});
 

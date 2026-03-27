@@ -82,8 +82,6 @@ export type ToolTier = "full" | "core" | "auto";
 
 /** Keywords that trigger dynamic tool injection in "auto" tier */
 export const AUTO_TIER_TRIGGERS: Record<string, string[]> = {
-  web_fetch: ["web", "fetch", "url", "http", "download", "website"],
-  web_search: ["search", "google", "find online", "look up", "browse"],
   npm_install: ["install", "npm", "package", "dependency"],
   pip_install: ["pip", "python package", "pip install"],
   install_tool: ["install", "winget", "choco", "brew", "apt"],
@@ -100,4 +98,6 @@ export const CORE_TOOL_NAMES = [
   "glob_files",
   "bash",
   "git",
+  "web_search",
+  "web_fetch",
 ];

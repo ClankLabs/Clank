@@ -162,6 +162,17 @@ export class GatewayServer {
   private async startAdapters(): Promise<void> {
     console.log("  Starting channel adapters...");
 
+    // Auto-start signal-cli daemon if Signal is enabled
+    const signalConfig = this.config.channels.signal;
+    if (signalConfig?.enabled && signalConfig.account) {
+      try {
+        const { startSignalDaemon } = await import("../cli/signal-setup.js");
+        await startSignalDaemon(signalConfig.account, signalConfig.endpoint || "http://localhost:7583");
+      } catch (err) {
+        console.error(`  Signal daemon: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+
     const adapterClasses: ChannelAdapter[] = [
       new TelegramAdapter(),
       new DiscordAdapter(),
@@ -354,6 +365,12 @@ export class GatewayServer {
     }
     this.adapters = [];
 
+    // Stop signal-cli daemon if we started it
+    try {
+      const { stopSignalDaemon } = await import("../cli/signal-setup.js");
+      await stopSignalDaemon();
+    } catch { /* best effort */ }
+
     // Destroy all engines
     for (const engine of this.engines.values()) {
       engine.destroy();
@@ -382,7 +399,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.8.2",
+        version: "1.9.0",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -518,7 +535,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.8.2",
+      version: "1.9.0",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,

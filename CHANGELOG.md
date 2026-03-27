@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.9.0] — 2026-03-27
+
+### Added
+- **Signal setup wizard** — `clank setup --signal` guides through installing signal-cli, phone registration, SMS/voice verification, and config. Clank now manages the signal-cli daemon automatically.
+- **Signal daemon lifecycle** — gateway auto-starts the signal-cli daemon when Signal is enabled and stops it on shutdown. No manual daemon management needed.
+- **Update check on gateway launch** — checks npm for newer versions on startup. Prompts Y/N if an update is available. Never auto-updates.
+- **Health check tool** — `health_check` tool lets the agent diagnose system health (providers, adapters, memory, disk) and restart failed adapters. 24 tools total.
+
+---
+
 ## [1.8.2] — 2026-03-27
 
 ### Fixed

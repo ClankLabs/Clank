@@ -16,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Read version from package.json
-let version = "1.8.2";
+let version = "1.9.0";
 try {
   const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
   version = pkg.version;
@@ -93,9 +93,15 @@ program
   .option("--quick", "Quick Start with sensible defaults")
   .option("--advanced", "Advanced setup with full control")
   .option("--section <name>", "Reconfigure a specific section")
+  .option("--signal", "Run the Signal setup wizard")
   .option("--non-interactive", "Non-interactive mode for scripting")
   .option("--accept-risk", "Accept security disclaimer")
   .action(async (opts) => {
+    if (opts.signal) {
+      const { runSignalSetup } = await import("./signal-setup.js");
+      await runSignalSetup();
+      return;
+    }
     const { runSetup } = await import("./setup.js");
     await runSetup(opts);
   });

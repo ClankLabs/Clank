@@ -107,29 +107,41 @@ Setup preserves your existing config. API keys and settings you've already confi
 
 ### Signal
 
-Requires [signal-cli](https://github.com/AsamK/signal-cli) running in JSON-RPC daemon mode.
-
-1. Install and register signal-cli with your phone number
-2. Start signal-cli in daemon mode:
+The easiest way to set up Signal is the dedicated wizard:
 
 ```bash
-signal-cli -a +1234567890 daemon --socket /tmp/signal-cli.sock
+clank setup --signal
 ```
 
-3. Add to config:
+This walks you through:
+1. Checking prerequisites (Java, signal-cli)
+2. Phone number registration and SMS/voice verification
+3. Configuring the daemon endpoint and allowlist
+4. Starting the daemon
+
+**Clank manages the signal-cli daemon automatically** — it starts with the gateway and stops when the gateway shuts down. No manual daemon management needed.
+
+#### Manual Setup
+
+If you prefer to configure manually:
+
+1. Install [signal-cli](https://github.com/AsamK/signal-cli) and register your phone number
+2. Add to config:
 
 ```json5
 {
   channels: {
     signal: {
       enabled: true,
-      socketPath: "/tmp/signal-cli.sock",   // or TCP: "localhost:7583"
+      endpoint: "http://localhost:7583",
       account: "+1234567890",
-      allowFrom: ["+1987654321"]             // phone numbers that can message
+      allowFrom: ["+1987654321"]
     }
   }
 }
 ```
+
+Clank will auto-start signal-cli as a daemon when the gateway launches.
 
 ---
 

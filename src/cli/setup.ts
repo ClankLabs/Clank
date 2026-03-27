@@ -273,21 +273,24 @@ export async function runSetup(opts: {
 
     const addSignal = await ask(rl, cyan("  Connect Signal? [y/N] "));
     if (addSignal.toLowerCase() === "y") {
-      console.log(dim("    Requires signal-cli running as a daemon:"));
-      console.log(dim("    1. Install: https://github.com/AsamK/signal-cli"));
-      console.log(dim("    2. Register: signal-cli -a +PHONE register"));
-      console.log(dim("    3. Start daemon: signal-cli -a +PHONE daemon --http localhost:7583"));
-      const endpoint = await ask(rl, cyan("    Daemon URL [http://localhost:7583]: "));
-      const phone = await ask(rl, cyan("    Your phone number (for allowlist, e.g. +15550100): "));
-      config.channels.signal = {
-        enabled: true,
-        endpoint: endpoint.trim() || "http://localhost:7583",
-      };
-      if (phone.trim()) {
-        config.channels.signal.account = phone.trim();
-        config.channels.signal.allowFrom = [phone.trim()];
+      console.log(dim("    Signal requires signal-cli (Java app) + a phone number."));
+      console.log(dim("    For guided install + registration, run: clank setup --signal"));
+      console.log("");
+      console.log(dim("    Quick config (if signal-cli is already set up):"));
+      const phone = await ask(rl, cyan("    Phone number (e.g. +15551234567): "));
+      if (phone.trim() && phone.trim().startsWith("+")) {
+        const endpoint = await ask(rl, cyan("    Daemon endpoint [http://localhost:7583]: "));
+        config.channels.signal = {
+          enabled: true,
+          endpoint: endpoint.trim() || "http://localhost:7583",
+          account: phone.trim(),
+          allowFrom: [phone.trim()],
+        };
+        console.log(green("    Signal configured"));
+        console.log(dim("    Clank will auto-start the signal-cli daemon with the gateway."));
+      } else {
+        console.log(dim("    Skipped. Run 'clank setup --signal' for the full wizard."));
       }
-      console.log(green("    Signal configured"));
     }
 
     // Step 7: Web Search (Brave)

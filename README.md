@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ClankLabs/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.8.2-blue.svg" alt="Version" /></a>
+  <a href="https://github.com/ClankLabs/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.9.0-blue.svg" alt="Version" /></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.npmjs.com/package/@clanklabs/clank"><img src="https://img.shields.io/npm/v/@clanklabs/clank.svg" alt="npm" /></a>
   <a href="https://github.com/ClankLabs/Clank/stargazers"><img src="https://img.shields.io/github/stars/ClankLabs/Clank.svg" alt="Stars" /></a>
@@ -97,7 +97,7 @@ ollama create wrench -f Modelfile
 | **Local-first** | Auto-detects Ollama, LM Studio, llama.cpp, vLLM. Cloud providers optional. |
 | **8 providers** | Ollama, Anthropic, OpenAI, Google Gemini, OpenRouter, OpenCode, Codex (OAuth), and automatic prompt fallback for models without native tool calling. |
 | **6 interfaces** | CLI, TUI, Web UI, Telegram, Discord, Signal — all equal citizens, all share sessions and memory. |
-| **23 tools** | File ops, bash, git, web search, web fetch, plus 9 self-config tools, 3 voice tools, and file sharing. |
+| **24 tools** | File ops, bash, git, web search, web fetch, plus 10 self-config tools (including health diagnostics), 3 voice tools, and file sharing. |
 | **Multi-agent** | Named agents with separate models, workspaces, tools, and routing. Spawn background sub-agents with depth control. |
 | **Inline approvals** | Telegram and Discord show Approve / Always / Deny buttons for tool confirmations. Signal and CLI auto-approve. |
 | **Web dashboard** | 8-panel SPA: Chat, Agents, Sessions, Config, Pipelines, Cron, Logs, Channels. |

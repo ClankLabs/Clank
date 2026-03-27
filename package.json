@@ -1,6 +1,6 @@
 {
   "name": "@clanklabs/clank",
-  "version": "1.8.2",
+  "version": "1.9.0",
   "description": "Local-first AI agent gateway. Open-source alternative to OpenClaw, optimized for local models.",
   "type": "module",
   "main": "dist/index.js",

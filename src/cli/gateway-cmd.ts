@@ -15,6 +15,15 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Read version for update check
+let version = "1.9.0";
+try {
+  const { readFileSync } = await import("node:fs");
+  const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));
+  version = pkg.version;
+} catch { /* use default */ }
 
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
@@ -53,6 +62,19 @@ export async function gatewayStartForeground(opts: { port?: string }): Promise<v
   if (await isGatewayRunning(config.gateway.port)) {
     console.log(green(`  Gateway already running on port ${config.gateway.port}`));
     return;
+  }
+
+  // Check for updates (interactive if foreground with a TTY, non-interactive otherwise)
+  const interactive = process.stdin.isTTY === true;
+  try {
+    const { checkForUpdate } = await import("./update-check.js");
+    const updated = await checkForUpdate(version, interactive);
+    if (updated) {
+      console.log(dim("  Restart Clank to use the updated version."));
+      process.exit(0);
+    }
+  } catch {
+    // Update check is best-effort — never block startup
   }
 
   // Write PID file

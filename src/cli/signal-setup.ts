@@ -148,6 +148,21 @@ export async function runSignalSetup(): Promise<void> {
     console.log("");
     console.log(bold("  Signal Setup"));
     console.log("");
+
+    // Signal-cli only runs on Linux
+    if (platform() !== "linux") {
+      console.log(red("  Signal integration requires signal-cli, which only runs on Linux."));
+      console.log("");
+      console.log("  Options:");
+      console.log(dim("    - Run Clank on a Linux server/VM and connect via Telegram/Discord from other devices"));
+      console.log(dim("    - Use WSL2 on Windows to run signal-cli (advanced)"));
+      console.log(dim("    - Use a Linux container with signal-cli and point Clank at it"));
+      console.log("");
+      const proceed = await ask(rl, cyan("  Continue anyway (manual/remote setup)? [y/N] "));
+      if (proceed.toLowerCase() !== "y") return;
+      console.log("");
+    }
+
     console.log("  This will configure Clank to send and receive Signal messages.");
     console.log("  You'll need a phone number that can receive SMS or voice calls.");
     console.log("");
@@ -158,20 +173,10 @@ export async function runSignalSetup(): Promise<void> {
     if (!javaInstalled()) {
       console.log(yellow("  Java is required but not installed."));
       console.log("");
-      const os = platform();
-      if (os === "win32") {
-        console.log("  Install Java:");
-        console.log(dim("    winget install Microsoft.OpenJDK.21"));
-        console.log(dim("    — or download from https://adoptium.net/"));
-      } else if (os === "darwin") {
-        console.log("  Install Java:");
-        console.log(dim("    brew install openjdk"));
-      } else {
-        console.log("  Install Java:");
-        console.log(dim("    sudo apt install default-jre     # Debian/Ubuntu"));
-        console.log(dim("    sudo dnf install java-latest     # Fedora"));
-        console.log(dim("    sudo pacman -S jre-openjdk       # Arch"));
-      }
+      console.log("  Install Java:");
+      console.log(dim("    sudo apt install default-jre     # Debian/Ubuntu"));
+      console.log(dim("    sudo dnf install java-latest     # Fedora"));
+      console.log(dim("    sudo pacman -S jre-openjdk       # Arch"));
       console.log("");
       const proceed = await ask(rl, cyan("  Install Java and come back, or continue anyway? [c]ontinue / [q]uit: "));
       if (proceed.toLowerCase() === "q") return;
@@ -183,20 +188,11 @@ export async function runSignalSetup(): Promise<void> {
     if (!commandExists("signal-cli")) {
       console.log(yellow("  signal-cli not found on PATH."));
       console.log("");
-      console.log("  Install signal-cli:");
-      const os = platform();
-      if (os === "darwin") {
-        console.log(dim("    brew install signal-cli"));
-      } else if (os === "win32") {
-        console.log(dim("    1. Download from https://github.com/AsamK/signal-cli/releases"));
-        console.log(dim("    2. Extract to a folder (e.g., C:\\signal-cli\\)"));
-        console.log(dim("    3. Add to PATH: setx PATH \"%PATH%;C:\\signal-cli\\bin\""));
-      } else {
-        console.log(dim("    # Download latest release:"));
-        console.log(dim("    curl -L https://github.com/AsamK/signal-cli/releases/latest/download/signal-cli-0.13.2-Linux.tar.gz | tar xz"));
-        console.log(dim("    sudo mv signal-cli-0.13.2/bin/signal-cli /usr/local/bin/"));
-        console.log(dim("    sudo mv signal-cli-0.13.2/lib /usr/local/lib/signal-cli"));
-      }
+      console.log("  Install signal-cli (Linux only):");
+      console.log(dim("    # Download latest release:"));
+      console.log(dim("    curl -L https://github.com/AsamK/signal-cli/releases/latest/download/signal-cli-0.13.2-Linux.tar.gz | tar xz"));
+      console.log(dim("    sudo mv signal-cli-0.13.2/bin/signal-cli /usr/local/bin/"));
+      console.log(dim("    sudo mv signal-cli-0.13.2/lib /usr/local/lib/signal-cli"));
       console.log("");
       const proceed = await ask(rl, cyan("  Install signal-cli and come back, or continue anyway? [c]ontinue / [q]uit: "));
       if (proceed.toLowerCase() === "q") return;

@@ -105,7 +105,9 @@ Setup preserves your existing config. API keys and settings you've already confi
 }
 ```
 
-### Signal
+### Signal (Linux Only)
+
+Signal integration requires [signal-cli](https://github.com/AsamK/signal-cli), which only runs on Linux. If you run Clank on a Linux server or VM, Signal works great as a mobile interface.
 
 The easiest way to set up Signal is the dedicated wizard:
 

@@ -271,25 +271,32 @@ export async function runSetup(opts: {
       }
     }
 
-    const addSignal = await ask(rl, cyan("  Connect Signal? [y/N] "));
+    const addSignal = await ask(rl, cyan("  Connect Signal? (Linux only) [y/N] "));
     if (addSignal.toLowerCase() === "y") {
-      console.log(dim("    Signal requires signal-cli (Java app) + a phone number."));
-      console.log(dim("    For guided install + registration, run: clank setup --signal"));
-      console.log("");
-      console.log(dim("    Quick config (if signal-cli is already set up):"));
-      const phone = await ask(rl, cyan("    Phone number (e.g. +15551234567): "));
-      if (phone.trim() && phone.trim().startsWith("+")) {
-        const endpoint = await ask(rl, cyan("    Daemon endpoint [http://localhost:7583]: "));
-        config.channels.signal = {
-          enabled: true,
-          endpoint: endpoint.trim() || "http://localhost:7583",
-          account: phone.trim(),
-          allowFrom: [phone.trim()],
-        };
-        console.log(green("    Signal configured"));
-        console.log(dim("    Clank will auto-start the signal-cli daemon with the gateway."));
+      const { platform } = await import("node:os");
+      if (platform() !== "linux") {
+        console.log(dim("    Signal requires signal-cli, which only runs on Linux."));
+        console.log(dim("    If you're running Clank on a Linux server, run: clank setup --signal"));
+        console.log(dim("    Skipping Signal setup."));
       } else {
-        console.log(dim("    Skipped. Run 'clank setup --signal' for the full wizard."));
+        console.log(dim("    Signal requires signal-cli (Java app) + a phone number."));
+        console.log(dim("    For guided install + registration, run: clank setup --signal"));
+        console.log("");
+        console.log(dim("    Quick config (if signal-cli is already set up):"));
+        const phone = await ask(rl, cyan("    Phone number (e.g. +15551234567): "));
+        if (phone.trim() && phone.trim().startsWith("+")) {
+          const endpoint = await ask(rl, cyan("    Daemon endpoint [http://localhost:7583]: "));
+          config.channels.signal = {
+            enabled: true,
+            endpoint: endpoint.trim() || "http://localhost:7583",
+            account: phone.trim(),
+            allowFrom: [phone.trim()],
+          };
+          console.log(green("    Signal configured"));
+          console.log(dim("    Clank will auto-start the signal-cli daemon with the gateway."));
+        } else {
+          console.log(dim("    Skipped. Run 'clank setup --signal' for the full wizard."));
+        }
       }
     }
 

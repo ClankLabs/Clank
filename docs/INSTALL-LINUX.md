@@ -158,7 +158,7 @@ The gateway watches this file and hot-reloads changes.
 - **Headless servers** — Clank works great on headless boxes. Use `clank gateway start` to run the daemon, then connect from Telegram, Discord, Signal, or the Web UI.
 - **Docker** — Clank can run in a container. Mount a volume for `~/.clank/` to persist config and sessions.
 - **File permissions** — config.json5 uses default OS permissions. On multi-user systems, consider `chmod 600 ~/.clank/config.json5` to restrict access.
-- **Signal on Linux** — signal-cli works natively. Install via your package manager or download from [GitHub](https://github.com/AsamK/signal-cli). Run in daemon mode and point Clank at the socket.
+- **Signal** — Linux is the only platform that supports Signal integration (signal-cli is Linux-only). Run `clank setup --signal` for guided install, registration, and automatic daemon management.
 
 ---
 

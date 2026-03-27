@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.8.0] — 2026-03-27
+
+### Added
+- **Signal adapter** — full Signal messenger integration via signal-cli JSON-RPC daemon. DM and group support, phone number allowlist, per-chat message queue, slash commands, tool indicators. Zero new npm dependencies.
+- **Shared command handler** — all adapters (Telegram, Discord, Signal) now share a unified `/command` handler. No more duplicated command logic.
+- **Inline tool approvals (Telegram)** — when a tool needs confirmation, Telegram sends an inline keyboard with Approve / Always / Deny buttons. Auto-approves after 30s timeout.
+- **Inline tool approvals (Discord)** — same approval flow using Discord button components. Slash commands now supported in Discord.
+
+### Changed
+- **Discord adapter** — upgraded from non-streaming to streaming gateway calls, added slash command routing
+- **Adapter architecture** — `toolEmoji()`, `splitMessage()`, and all shared command logic extracted to `src/adapters/commands.ts`
+- **Gateway streaming API** — added `onConfirm` callback to `handleInboundMessageStreaming()` for interactive tool approval. Adapters without confirmation UI (Signal, Web) auto-approve as before.
+
+---
+
 ## [1.7.6] — 2026-03-27
 
 ### Improved

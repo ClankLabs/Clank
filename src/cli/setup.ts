@@ -271,6 +271,25 @@ export async function runSetup(opts: {
       }
     }
 
+    const addSignal = await ask(rl, cyan("  Connect Signal? [y/N] "));
+    if (addSignal.toLowerCase() === "y") {
+      console.log(dim("    Requires signal-cli running as a daemon:"));
+      console.log(dim("    1. Install: https://github.com/AsamK/signal-cli"));
+      console.log(dim("    2. Register: signal-cli -a +PHONE register"));
+      console.log(dim("    3. Start daemon: signal-cli -a +PHONE daemon --http localhost:7583"));
+      const endpoint = await ask(rl, cyan("    Daemon URL [http://localhost:7583]: "));
+      const phone = await ask(rl, cyan("    Your phone number (for allowlist, e.g. +15550100): "));
+      config.channels.signal = {
+        enabled: true,
+        endpoint: endpoint.trim() || "http://localhost:7583",
+      };
+      if (phone.trim()) {
+        config.channels.signal.account = phone.trim();
+        config.channels.signal.allowFrom = [phone.trim()];
+      }
+      console.log(green("    Signal configured"));
+    }
+
     // Step 7: Web Search (Brave)
     console.log("");
     const addSearch = await ask(rl, cyan("  Set up web search (Brave Search)? [y/N] "));

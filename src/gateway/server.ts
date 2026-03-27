@@ -28,6 +28,7 @@ import { resolveRoute, deriveSessionKey, type RouteContext } from "../routing/in
 import { type ChannelAdapter } from "../adapters/base.js";
 import { TelegramAdapter } from "../adapters/telegram.js";
 import { DiscordAdapter } from "../adapters/discord.js";
+import { SignalAdapter } from "../adapters/signal.js";
 import { WebAdapter } from "../adapters/web.js";
 import { PluginLoader } from "../plugins/index.js";
 import {
@@ -164,6 +165,7 @@ export class GatewayServer {
     const adapterClasses: ChannelAdapter[] = [
       new TelegramAdapter(),
       new DiscordAdapter(),
+      new SignalAdapter(),
       new WebAdapter(),
     ];
 
@@ -242,6 +244,7 @@ export class GatewayServer {
       onToolStart?: (name: string) => void;
       onToolResult?: (name: string, success: boolean) => void;
       onError?: (message: string) => void;
+      onConfirm?: (actions: unknown[], resolve: (v: boolean | "always") => void) => void;
     },
   ): Promise<string> {
     const rlKey = deriveSessionKey(context);
@@ -261,6 +264,7 @@ export class GatewayServer {
       onToolStart?: (name: string) => void;
       onToolResult?: (name: string, success: boolean) => void;
       onError?: (message: string) => void;
+      onConfirm?: (actions: unknown[], resolve: (v: boolean | "always") => void) => void;
     },
   ): Promise<string> {
     const agentId = resolveRoute(
@@ -305,12 +309,16 @@ export class GatewayServer {
       listeners.push(["error", fn]);
     }
 
-    // Auto-approve tool confirmations for adapter channels (Telegram,
-    // Discord, etc.). These channels have no interactive confirmation UI,
-    // so blocking on confirmation means the engine hangs forever.
+    // Tool confirmation handling for adapter channels.
+    // If the adapter provides onConfirm, relay the request for interactive approval.
+    // Otherwise, auto-approve (for adapters without interactive UI like Signal).
     const confirmFn = (data: unknown) => {
-      const { resolve } = data as { resolve: (v: boolean | "always") => void };
-      resolve("always");
+      const { actions, resolve } = data as { actions: unknown[]; resolve: (v: boolean | "always") => void };
+      if (callbacks.onConfirm) {
+        callbacks.onConfirm(actions, resolve);
+      } else {
+        resolve("always");
+      }
     };
     engine.on("confirm-needed", confirmFn);
     listeners.push(["confirm-needed", confirmFn]);
@@ -374,7 +382,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.7.6",
+        version: "1.8.0",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -510,7 +518,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.7.6",
+      version: "1.8.0",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,

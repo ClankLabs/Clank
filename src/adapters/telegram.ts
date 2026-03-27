@@ -11,13 +11,17 @@
  * - Per-chat message queue
  */
 
-import { Bot } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { ChannelAdapter, type InboundMessage, type ReplyPayload } from "./base.js";
+import { handleAdapterCommand, toolEmoji, splitMessage } from "./commands.js";
 import type { GatewayServer } from "../gateway/server.js";
 import type { ClankConfig } from "../config/index.js";
 
 /** Per-chat state for thinking display toggle */
 const thinkingEnabled = new Map<number, boolean>();
+
+/** Pending tool confirmations — keyed by confirmId */
+const pendingConfirms = new Map<string, (v: boolean | "always") => void>();
 
 export class TelegramAdapter extends ChannelAdapter {
   readonly id = "telegram";
@@ -185,6 +189,35 @@ export class TelegramAdapter extends ChannelAdapter {
                 },
                 onError: (message: string) => {
                   bot.api.sendMessage(chatId, `⚠️ ${message.slice(0, 200)}`).catch(() => {});
+                },
+                onConfirm: (actions: unknown[], resolve: (v: boolean | "always") => void) => {
+                  const action = (actions as Array<{ name?: string; safetyLevel?: string }>)[0];
+                  const toolName = action?.name || "unknown tool";
+                  const level = action?.safetyLevel || "high";
+                  const confirmId = `confirm_${Date.now()}`;
+
+                  // Store the resolver for the callback_query handler
+                  pendingConfirms.set(confirmId, resolve);
+
+                  const keyboard = new InlineKeyboard()
+                    .text("✅ Approve", `${confirmId}:yes`)
+                    .text("✅ Always", `${confirmId}:always`)
+                    .text("❌ Deny", `${confirmId}:no`);
+
+                  const emoji = toolEmoji(toolName);
+                  bot.api.sendMessage(
+                    chatId,
+                    `${emoji} *Tool approval needed*\n\n\`${toolName}\` (${level} risk)\n\nApprove this action?`,
+                    { parse_mode: "Markdown", reply_markup: keyboard },
+                  ).catch(() => {});
+
+                  // Auto-approve after 30s to prevent hanging
+                  setTimeout(() => {
+                    if (pendingConfirms.has(confirmId)) {
+                      pendingConfirms.delete(confirmId);
+                      resolve(true);
+                    }
+                  }, 30_000);
                 },
               },
             );
@@ -411,6 +444,27 @@ export class TelegramAdapter extends ChannelAdapter {
         chatLocks.set(chatId, prev.then(processDoc).catch(() => {}));
       });
 
+      // Handle inline keyboard callbacks for tool approvals
+      bot.on("callback_query:data", async (cbCtx) => {
+        const data = cbCtx.callbackQuery.data;
+        const [confirmId, choice] = data.split(":");
+        const resolve = pendingConfirms.get(confirmId);
+        if (!resolve) return;
+
+        pendingConfirms.delete(confirmId);
+        await cbCtx.answerCallbackQuery(choice === "no" ? "Denied" : "Approved").catch(() => {});
+
+        const action = (cbCtx.callbackQuery.message as any)?.text?.match(/`([^`]+)`/)?.[1] || "tool";
+        await cbCtx.editMessageText(
+          choice === "no"
+            ? `❌ \`${action}\` — denied`
+            : `✅ \`${action}\` — approved`,
+          { parse_mode: "Markdown" },
+        ).catch(() => {});
+
+        resolve(choice === "always" ? "always" : choice !== "no");
+      });
+
       bot.start({
         onStart: () => {
           this.running = true;
@@ -434,91 +488,19 @@ export class TelegramAdapter extends ChannelAdapter {
     }
   }
 
-  /** Handle slash commands from Telegram */
+  /** Handle slash commands — delegates to shared handler, with Telegram-specific overrides */
   private async handleCommand(text: string, chatId: number, isGroup: boolean): Promise<string | null> {
-    const [cmd, ...args] = text.slice(1).split(/\s+/);
-    const command = cmd.replace(/@\w+$/, "");
+    const [cmd] = text.slice(1).split(/\s+/);
+    const command = cmd.replace(/@\w+$/, "").toLowerCase();
 
+    // Telegram-specific commands
     switch (command) {
-      case "help":
-      case "start":
-        return [
-          "🔧 *Clank Commands*",
-          "",
-          "💬 *Chat*",
-          "/new — Start a new session",
-          "/reset — Clear current session history",
-          "/compact — Save state, clear context, continue",
-          "",
-          "📊 *Info*",
-          "/status — Agent, model, and session info",
-          "/agents — List available agents",
-          "/model — Show current model",
-          "/tasks — Show background tasks",
-          "/kill <id> — Kill a background task",
-          "/killall — Kill all running tasks",
-          "/version — Show Clank version",
-          "",
-          "⚙️ *Settings*",
-          "/agent <name> — Switch to a different agent",
-          "/think — Toggle thinking display",
-          "",
-          "_Send any message to chat with the agent._",
-        ].join("\n");
-
-      case "status": {
-        const cfg = this.config;
-        const model = cfg?.agents?.defaults?.model?.primary || "unknown";
-        const agentCount = cfg?.agents?.list?.length || 0;
-        const tasks = this.gateway?.getTaskRegistry()?.list() || [];
-        const runningTasks = tasks.filter((t) => t.status === "running").length;
-        const uptime = Math.round((Date.now() - this.startedAt) / 60000);
-        const thinking = thinkingEnabled.get(chatId) ? "on" : "off";
-
-        return [
-          "📊 *Status*",
-          "",
-          `*Model:* \`${model}\``,
-          `*Agents:* ${agentCount || 1} configured`,
-          `*Tasks:* ${runningTasks} running / ${tasks.length} total`,
-          `*Thinking:* ${thinking}`,
-          `*Chat:* ${isGroup ? "group" : "DM"} (\`${chatId}\`)`,
-          `*Uptime:* ${uptime} min`,
-        ].join("\n");
-      }
-
-      case "agents": {
-        const list = this.config?.agents?.list || [];
-        const defaultModel = this.config?.agents?.defaults?.model?.primary || "unknown";
-        if (list.length === 0) {
-          return `📋 *Agents*\n\n• *default* — \`${defaultModel}\`\n\n_No custom agents. Configure in config.json5._`;
-        }
-        const lines = list.map((a) =>
-          `• *${a.name || a.id}* — \`${a.model?.primary || defaultModel}\``
-        );
-        return `📋 *Agents*\n\n• *default* — \`${defaultModel}\`\n${lines.join("\n")}\n\n_Switch with /agent <name>_`;
-      }
-
-      case "agent": {
-        if (!args[0]) return "Usage: /agent <name>\n\nSee /agents for available agents.";
-        const targetId = args[0].toLowerCase();
-        const list = this.config?.agents?.list || [];
-        const found = list.find((a) => a.id.toLowerCase() === targetId || (a.name || "").toLowerCase() === targetId);
-
-        if (!found && targetId !== "default") {
-          return `Agent "${args[0]}" not found. See /agents for available agents.`;
-        }
-
-        // Reset session to switch agent — the new session key will route to the new agent
-        if (this.gateway) {
-          await this.gateway.resetSession({
-            channel: "telegram",
-            peerId: chatId,
-            peerKind: isGroup ? "group" : "dm",
-          });
-        }
-        const name = found ? (found.name || found.id) : "default";
-        return `Switched to agent *${name}*. Session reset — send a message to begin.`;
+      case "think": {
+        const current = thinkingEnabled.get(chatId) ?? false;
+        thinkingEnabled.set(chatId, !current);
+        return !current
+          ? "💭 Thinking display *on* — you'll see the model's reasoning above responses."
+          : "💭 Thinking display *off* — only the final response will be shown.";
       }
 
       case "sessions": {
@@ -532,115 +514,16 @@ export class TelegramAdapter extends ChannelAdapter {
           `Current: \`${isGroup ? "group" : "dm"}:telegram:${chatId}\``,
         ].join("\n");
       }
-
-      case "new":
-      case "reset":
-        if (this.gateway) {
-          await this.gateway.resetSession({
-            channel: "telegram",
-            peerId: chatId,
-            peerKind: isGroup ? "group" : "dm",
-          });
-        }
-        return command === "new"
-          ? "✨ New session started. Send a message to begin."
-          : "🗑 Session cleared. History erased.";
-
-      case "compact": {
-        if (!this.gateway) return "Gateway not connected.";
-        const summary = await this.gateway.compactSession({
-          channel: "telegram",
-          peerId: chatId,
-          peerKind: isGroup ? "group" : "dm",
-        });
-        if (!summary) return "Nothing to compact — no active session.";
-        const preview = summary.length > 300 ? summary.slice(0, 300) + "..." : summary;
-        return `📦 *Session compacted*\n\nContext cleared and state saved. The agent will continue where it left off.\n\n_Summary:_\n${preview}`;
-      }
-
-      case "model": {
-        const model = this.config?.agents?.defaults?.model?.primary || "unknown";
-        const fallbacks = this.config?.agents?.defaults?.model?.fallbacks || [];
-        const lines = [`🤖 *Current Model*\n\nPrimary: \`${model}\``];
-        if (fallbacks.length > 0) {
-          lines.push(`Fallbacks: ${fallbacks.map((f) => `\`${f}\``).join(", ")}`);
-        }
-        return lines.join("\n");
-      }
-
-      case "tasks": {
-        const tasks = this.gateway?.getTaskRegistry()?.list() || [];
-        if (tasks.length === 0) return "📋 No background tasks.";
-        const lines = tasks.map((t) => {
-          const elapsed = Math.round(((t.completedAt || Date.now()) - t.startedAt) / 1000);
-          const status = t.status === "running" ? "⏳" : t.status === "completed" ? "✅" : t.status === "failed" ? "❌" : "⏱";
-          const depth = t.spawnDepth > 0 ? ` [depth ${t.spawnDepth}]` : "";
-          const kids = t.children.length > 0 ? ` (${t.children.length} children)` : "";
-          const shortId = t.id.slice(0, 8);
-          return `${status} \`${shortId}\` *${t.label.slice(0, 35)}* (${t.agentId})${depth}${kids} — ${elapsed}s`;
-        });
-        return `📋 *Background Tasks*\n\n${lines.join("\n")}\n\n_Kill with /kill <id> or /killall_`;
-      }
-
-      case "kill": {
-        if (!this.gateway) return "Gateway not connected.";
-        if (!args[0]) return "Usage: /kill <task-id>\n\nSee /tasks for task IDs.";
-
-        const registry = this.gateway.getTaskRegistry();
-        const shortId = args[0];
-        // Match by prefix (short IDs from /tasks)
-        const allTasks = registry.list();
-        const match = allTasks.find((t) => t.id.startsWith(shortId) && t.status === "running");
-        if (!match) return `No running task matching \`${shortId}\`. See /tasks.`;
-
-        // Cancel the engine
-        const subEngine = (this.gateway as any).engines?.get(`task:${match.id}`);
-        if (subEngine) {
-          subEngine.cancel();
-          subEngine.destroy();
-          (this.gateway as any).engines?.delete(`task:${match.id}`);
-        }
-
-        registry.cancel(match.id);
-        const cascaded = registry.cascadeCancel(`task:${match.id}`);
-        const cascade = cascaded > 0 ? ` + ${cascaded} child task(s)` : "";
-        return `🗑 Killed task \`${match.id.slice(0, 8)}\` — *${match.label.slice(0, 40)}*${cascade}`;
-      }
-
-      case "killall": {
-        if (!this.gateway) return "Gateway not connected.";
-        const registry = this.gateway.getTaskRegistry();
-        const running = registry.list({ status: "running" });
-        if (running.length === 0) return "No running tasks to kill.";
-
-        for (const t of running) {
-          const subEngine = (this.gateway as any).engines?.get(`task:${t.id}`);
-          if (subEngine) {
-            subEngine.cancel();
-            subEngine.destroy();
-            (this.gateway as any).engines?.delete(`task:${t.id}`);
-          }
-          registry.cancel(t.id);
-        }
-
-        return `🗑 Killed *${running.length}* running task(s).`;
-      }
-
-      case "think": {
-        const current = thinkingEnabled.get(chatId) ?? false;
-        thinkingEnabled.set(chatId, !current);
-        return !current
-          ? "💭 Thinking display *on* — you'll see the model's reasoning above responses."
-          : "💭 Thinking display *off* — only the final response will be shown.";
-      }
-
-      case "version": {
-        return `🔧 *Clank* v1.7.6`;
-      }
-
-      default:
-        return null;
     }
+
+    // Delegate to shared command handler
+    return handleAdapterCommand(text, {
+      gateway: this.gateway,
+      config: this.config,
+      channel: "telegram",
+      chatId,
+      isGroup,
+    });
   }
 
   async send(sessionKey: string, payload: ReplyPayload): Promise<void> {
@@ -655,20 +538,6 @@ export class TelegramAdapter extends ChannelAdapter {
       }
     }
   }
-}
-
-/** Map tool names to descriptive emojis */
-function toolEmoji(name: string): string {
-  const map: Record<string, string> = {
-    read_file: "📄", write_file: "✏️", edit_file: "✏️",
-    list_directory: "📁", search_files: "🔍", glob_files: "🔍",
-    bash: "💻", git: "📦",
-    web_search: "🌐", web_fetch: "🌐",
-    spawn_task: "🚀", manage_agent: "🤖", manage_model: "🧠",
-    manage_config: "⚙️", manage_session: "📋", manage_cron: "⏰",
-    tts: "🔊", stt: "🎤",
-  };
-  return map[name] || "🔧";
 }
 
 /** Format a tool name with emoji */
@@ -731,20 +600,4 @@ function buildFinalDisplay(
   return parts.join("\n");
 }
 
-/** Split a long message into chunks that fit Telegram's limit */
-function splitMessage(text: string, maxLen: number): string[] {
-  if (text.length <= maxLen) return [text];
-  const chunks: string[] = [];
-  let remaining = text;
-  while (remaining.length > 0) {
-    if (remaining.length <= maxLen) {
-      chunks.push(remaining);
-      break;
-    }
-    let splitAt = remaining.lastIndexOf("\n", maxLen);
-    if (splitAt < maxLen * 0.5) splitAt = maxLen;
-    chunks.push(remaining.slice(0, splitAt));
-    remaining = remaining.slice(splitAt);
-  }
-  return chunks;
-}
+// splitMessage and toolEmoji imported from ./commands.js

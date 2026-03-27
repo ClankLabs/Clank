@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ClankLabs/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.7.6-blue.svg" alt="Version" /></a>
+  <a href="https://github.com/ClankLabs/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.8.0-blue.svg" alt="Version" /></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.npmjs.com/package/@clanklabs/clank"><img src="https://img.shields.io/npm/v/@clanklabs/clank.svg" alt="npm" /></a>
   <a href="https://github.com/ClankLabs/Clank/stargazers"><img src="https://img.shields.io/github/stars/ClankLabs/Clank.svg" alt="Stars" /></a>
@@ -28,7 +28,7 @@
 
 ## What is Clank?
 
-Clank is a personal AI gateway — **one daemon, many frontends**. It connects your preferred interfaces (CLI, TUI, browser, Telegram, Discord) to AI agents running local or cloud models. All interfaces share sessions, memory, and agent state.
+Clank is a personal AI gateway — **one daemon, many frontends**. It connects your preferred interfaces (CLI, TUI, browser, Telegram, Discord, Signal) to AI agents running local or cloud models. All interfaces share sessions, memory, and agent state.
 
 **Built for people who want the OpenClaw experience without the token costs.**
 
@@ -92,7 +92,7 @@ That's it. Setup auto-detects your local models, configures the gateway, and get
 | Platform | Download |
 |----------|----------|
 | **npm** (all platforms) | `npm install -g @clanklabs/clank` |
-| **macOS** (Apple Silicon) | [Clank_1.7.6_macos](https://github.com/ClankLabs/Clank/releases/latest/download/Clank_1.7.6_macos) |
+| **macOS** (Apple Silicon) | [Clank_1.8.0_macos](https://github.com/ClankLabs/Clank/releases/latest/download/Clank_1.8.0_macos) |
 
 ## Wrench — Purpose-Built Agentic Models
 
@@ -137,7 +137,7 @@ Clank is a **developer tool** that gives AI agents full access to your file syst
 |---------|-------------|
 | **Local-first** | Auto-detects Ollama, LM Studio, llama.cpp, vLLM. Cloud providers optional. |
 | **Multi-agent** | Named agents with separate models, workspaces, tools, and routing. |
-| **Multi-channel** | CLI, TUI, Web UI, Telegram, Discord — all equal, all share sessions. |
+| **Multi-channel** | CLI, TUI, Web UI, Telegram, Discord, Signal — all equal, all share sessions. |
 | **Self-configuring** | After setup, configure everything through conversation. |
 | **18 tools** | File ops, bash, git, web search (Brave), plus 8 self-config tools. |
 | **Web Control UI** | 8-panel dashboard: Chat, Agents, Sessions, Config, Pipelines, Cron, Logs, Channels. |

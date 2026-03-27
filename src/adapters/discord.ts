@@ -3,14 +3,17 @@
  *
  * Built on discord.js. Supports:
  * - Server/channel/role-based routing
- * - Thread support for long conversations
- * - Button-based confirmations
- * - Streaming via message editing
+ * - Button-based tool approval confirmations
+ * - Slash commands via shared handler
  */
 
 import { ChannelAdapter, type InboundMessage, type ReplyPayload } from "./base.js";
+import { handleAdapterCommand, toolEmoji, splitMessage } from "./commands.js";
 import type { GatewayServer } from "../gateway/server.js";
 import type { ClankConfig } from "../config/index.js";
+
+/** Pending tool confirmations — keyed by confirmId */
+const pendingConfirms = new Map<string, (v: boolean | "always") => void>();
 
 export class DiscordAdapter extends ChannelAdapter {
   readonly id = "discord";
@@ -18,6 +21,7 @@ export class DiscordAdapter extends ChannelAdapter {
   private gateway: GatewayServer | null = null;
   private config: ClankConfig | null = null;
   private client: unknown = null; // discord.js Client — loaded dynamically
+  private discord: any = null;    // discord.js module reference
   private running = false;
 
   init(gateway: GatewayServer, config: ClankConfig): void {
@@ -33,7 +37,9 @@ export class DiscordAdapter extends ChannelAdapter {
     }
 
     try {
-      const discord = await import("discord.js" as string) as any;
+      this.discord = await import("discord.js" as string) as any;
+      const discord = this.discord;
+
       this.client = new discord.Client({
         intents: [
           discord.GatewayIntentBits.Guilds,
@@ -54,34 +60,116 @@ export class DiscordAdapter extends ChannelAdapter {
         if (message.author.bot) return;
 
         const isDM = !message.guild;
-
-        // Route through gateway
         if (!this.gateway) return;
+
+        const text = message.content?.trim();
+        if (!text) return;
+
+        // Handle slash commands
+        if (text.startsWith("/")) {
+          const reply = await handleAdapterCommand(text, {
+            gateway: this.gateway,
+            config: this.config,
+            channel: "discord",
+            chatId: isDM ? message.author.id : message.channelId,
+            isGroup: !isDM,
+          });
+          if (reply) {
+            const chunks = splitMessage(reply, 1900);
+            for (const chunk of chunks) {
+              await message.reply(chunk);
+            }
+            return;
+          }
+        }
 
         try {
           await message.channel.sendTyping().catch(() => {});
 
-          const response = await this.gateway.handleInboundMessage(
+          const response = await this.gateway.handleInboundMessageStreaming(
             {
               channel: "discord",
               peerId: isDM ? message.author.id : message.channelId,
               peerKind: isDM ? "dm" : "group",
               guildId: message.guild?.id,
             },
-            message.content,
+            text,
+            {
+              onError: (msg: string) => {
+                message.reply(`⚠️ ${msg.slice(0, 200)}`).catch(() => {});
+              },
+              onConfirm: (actions: unknown[], resolve: (v: boolean | "always") => void) => {
+                const action = (actions as Array<{ name?: string; safetyLevel?: string }>)[0];
+                const toolName = action?.name || "unknown tool";
+                const level = action?.safetyLevel || "high";
+                const confirmId = `confirm_${Date.now()}`;
+
+                pendingConfirms.set(confirmId, resolve);
+
+                const emoji = toolEmoji(toolName);
+                const row = new discord.ActionRowBuilder().addComponents(
+                  new discord.ButtonBuilder()
+                    .setCustomId(`${confirmId}:yes`)
+                    .setLabel("Approve")
+                    .setStyle(discord.ButtonStyle.Success),
+                  new discord.ButtonBuilder()
+                    .setCustomId(`${confirmId}:always`)
+                    .setLabel("Always")
+                    .setStyle(discord.ButtonStyle.Primary),
+                  new discord.ButtonBuilder()
+                    .setCustomId(`${confirmId}:no`)
+                    .setLabel("Deny")
+                    .setStyle(discord.ButtonStyle.Danger),
+                );
+
+                message.reply({
+                  content: `${emoji} **Tool approval needed**\n\n\`${toolName}\` (${level} risk)\n\nApprove this action?`,
+                  components: [row],
+                }).catch(() => {});
+
+                // Auto-approve after 30s
+                setTimeout(() => {
+                  if (pendingConfirms.has(confirmId)) {
+                    pendingConfirms.delete(confirmId);
+                    resolve(true);
+                  }
+                }, 30_000);
+              },
+            },
           );
 
           if (response) {
-            // Discord has 2000 char limit
-            const chunks = splitDiscordMessage(response, 1900);
+            const chunks = splitMessage(response, 1900);
             for (const chunk of chunks) {
               await message.reply(chunk);
             }
           }
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
-          await message.reply(`Error: ${errMsg.slice(0, 200)}`);
+          await message.reply(`Error: ${errMsg.slice(0, 200)}`).catch(() => {});
         }
+      });
+
+      // Handle button clicks for tool approvals
+      client.on("interactionCreate", async (interaction: any) => {
+        if (!interaction.isButton()) return;
+
+        const [confirmId, choice] = interaction.customId.split(":");
+        const resolve = pendingConfirms.get(confirmId);
+        if (!resolve) {
+          await interaction.reply({ content: "This approval has expired.", ephemeral: true }).catch(() => {});
+          return;
+        }
+
+        pendingConfirms.delete(confirmId);
+        await interaction.update({
+          content: choice === "no"
+            ? `❌ Tool action — **denied**`
+            : `✅ Tool action — **approved**`,
+          components: [],
+        }).catch(() => {});
+
+        resolve(choice === "always" ? "always" : choice !== "no");
       });
 
       await client.login(discordConfig.botToken);
@@ -101,13 +189,12 @@ export class DiscordAdapter extends ChannelAdapter {
     if (!payload.text || !this.client) return;
     const client = this.client as any;
 
-    // Extract channel ID from session key
     const parts = sessionKey.split(":");
     const channelId = parts[parts.length - 1];
     try {
       const channel = await client.channels.fetch(channelId);
       if (channel?.send) {
-        const chunks = splitDiscordMessage(payload.text, 1900);
+        const chunks = splitMessage(payload.text, 1900);
         for (const chunk of chunks) {
           await channel.send(chunk);
         }
@@ -116,18 +203,4 @@ export class DiscordAdapter extends ChannelAdapter {
       // Channel not accessible
     }
   }
-}
-
-function splitDiscordMessage(text: string, maxLen: number): string[] {
-  if (text.length <= maxLen) return [text];
-  const chunks: string[] = [];
-  let remaining = text;
-  while (remaining.length > 0) {
-    if (remaining.length <= maxLen) { chunks.push(remaining); break; }
-    let splitAt = remaining.lastIndexOf("\n", maxLen);
-    if (splitAt < maxLen * 0.5) splitAt = maxLen;
-    chunks.push(remaining.slice(0, splitAt));
-    remaining = remaining.slice(splitAt);
-  }
-  return chunks;
 }

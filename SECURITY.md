@@ -81,7 +81,7 @@ We will acknowledge receipt within 48 hours and provide a fix timeline within 7 
 - **Pinned dependencies** — all versions in `package.json` use exact versions (no `^` or `~` ranges) to prevent auto-pulling compromised releases
 - **Lockfile committed** — `package-lock.json` is committed and CI uses `npm ci` for reproducible installs
 - **Minimal dependency tree** — 4 runtime dependencies (commander, grammy, json5, ws) to reduce attack surface
-- **npm audit clean** as of v1.7.6
+- **npm audit clean** as of v1.8.0
 - **npm 2FA** — publishing requires two-factor authentication on the maintainer's npm account
 - Consumers are encouraged to verify package integrity via `npm audit` after installation
 

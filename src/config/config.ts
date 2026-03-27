@@ -72,6 +72,13 @@ export interface ClankConfig {
       enabled: boolean;
       botToken?: string;
     };
+    signal?: {
+      enabled: boolean;
+      endpoint?: string;
+      account?: string;
+      allowFrom?: string[];
+      groups?: Record<string, { requireMention?: boolean }>;
+    };
     web?: {
       enabled: boolean;
     };

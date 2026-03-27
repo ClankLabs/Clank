@@ -417,7 +417,7 @@ export class GatewayServer {
       try {
         // Try to find index.html relative to this file's location
         const __dirname = dirname(fileURLToPath(import.meta.url));
-        const htmlPath = join(__dirname, "..", "web", "index.html");
+        const htmlPath = join(__dirname, "web", "index.html");
         const html = await readFile(htmlPath, "utf-8");
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end(html);

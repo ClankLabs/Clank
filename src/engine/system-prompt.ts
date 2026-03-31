@@ -134,6 +134,7 @@ export async function buildSystemPrompt(opts: {
   parts.push("");
   if (isLocal) {
     parts.push("Your memories are managed automatically. Use memory tools to save or recall important information. Do not rely on conversation history for long-term facts.");
+    parts.push("**Context efficiency:** Conserve context — use read_file with offset/limit to grab specific lines instead of loading entire files, prefer bash (ls, grep, git log) for quick checks over reading full files, save recurring facts to memory instead of repeating them, reference earlier tool results instead of re-fetching, and spawn sub-agents for multi-step work so you don't hold all context in one session.");
   } else {
     parts.push("When you learn something important about the user or project, save it using the config or memory tools so you remember it next time.");
   }

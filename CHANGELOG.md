@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.11.1] — 2026-03-31
+
+### Changed
+- **Local model context efficiency** — added context conservation hints to the local model system prompt. Instructs local models (9B, etc.) to use read_file with offset/limit, prefer bash for quick checks, save recurring facts to memory, reference earlier tool results, and spawn sub-agents for multi-step work. Reduces context blowup on constrained models without affecting cloud or 35B behavior.
+
+---
+
 ## [1.11.0] — 2026-03-30
 
 ### Added

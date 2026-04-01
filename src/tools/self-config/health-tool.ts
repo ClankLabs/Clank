@@ -98,7 +98,7 @@ async function runDiagnosis(): Promise<string> {
   for (const [name, port] of [["ollama", 11434], ["lmstudio", 1234], ["llamacpp", 8080], ["vllm", 8000]] as const) {
     const url = providers[name]?.baseUrl || `http://127.0.0.1:${port}`;
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      await fetch(url, { signal: AbortSignal.timeout(2000) });
       lines.push(`- **${name}:** OK (${url})`);
     } catch {
       lines.push(`- **${name}:** not reachable`);

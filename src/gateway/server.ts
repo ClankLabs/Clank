@@ -17,7 +17,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AgentEngine, type AgentIdentity, buildSystemPrompt } from "../engine/index.js";
 import { createFullRegistry, type ToolRegistry } from "../tools/index.js";
-import { createProvider, resolveWithFallback, type ProviderConfig } from "../providers/index.js";
+import { resolveWithFallback, type ProviderConfig } from "../providers/index.js";
 import { SessionStore } from "../sessions/index.js";
 import { MemoryManager } from "../memory/index.js";
 import { type ClankConfig, getConfigDir, ConfigWatcher } from "../config/index.js";

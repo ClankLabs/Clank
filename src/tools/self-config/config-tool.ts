@@ -6,7 +6,7 @@
  * and the agent uses this tool to make it happen.
  */
 
-import { loadConfig, saveConfig, getConfigPath } from "../../config/index.js";
+import { loadConfig, saveConfig } from "../../config/index.js";
 import { redactConfig } from "../../config/redact.js";
 import type { Tool, ToolContext, ValidationResult } from "../types.js";
 

@@ -19,13 +19,11 @@
 
 import { createInterface } from "node:readline";
 import WebSocket from "ws";
-import { loadConfig, getConfigDir } from "../config/index.js";
+import { loadConfig } from "../config/index.js";
 import { DEFAULT_PORT, type HelloFrame, type EventFrame, type ResponseFrame } from "../gateway/protocol.js";
 
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
-const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
-const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
 const italic = (s: string) => `\x1b[3m${s}\x1b[0m`;

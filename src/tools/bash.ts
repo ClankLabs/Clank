@@ -86,7 +86,7 @@ export const bashTool: Tool = {
     const shellArgs = platform() === "win32" ? ["/c", command] : ["-c", command];
 
     return new Promise<string>((resolvePromise) => {
-      const proc = execFile(
+      execFile(
         shell,
         shellArgs,
         {

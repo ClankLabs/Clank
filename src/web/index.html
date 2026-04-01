@@ -317,7 +317,7 @@
         for (const msg of messages) {
           const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
           if (msg.role === 'user' || msg.role === 'assistant') {
-            addMsg(msg.role, content, msg.role === 'assistant');
+            addMsg(msg.role, content);
           }
         }
       }

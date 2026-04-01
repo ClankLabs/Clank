@@ -206,7 +206,6 @@ export class ContextEngine {
     for (let i = compactable.length - 1; i >= 0; i--) {
       const msg = compactable[i];
       if (msg.role === "tool" && msg.tool_call_id) {
-        const content = typeof msg.content === "string" ? msg.content : "";
         // Extract a dedup key from the tool call (e.g., read_file:/path)
         const key = msg.tool_call_id;
         if (!seenToolResults.has(key)) {

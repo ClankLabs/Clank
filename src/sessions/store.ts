@@ -12,7 +12,7 @@
  * start in CLI, continue in the browser, check from Telegram.
  */
 
-import { readFile, writeFile, readdir, unlink, mkdir } from "node:fs/promises";
+import { readFile, writeFile, unlink, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";

@@ -8,7 +8,6 @@
 import { GatewayServer } from "../gateway/index.js";
 import { loadConfig, ensureConfigDir, getConfigDir } from "../config/index.js";
 import { DEFAULT_PORT } from "../gateway/protocol.js";
-import { exec } from "node:child_process";
 import { writeFile, readFile, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";

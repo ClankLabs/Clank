@@ -11,9 +11,9 @@
  * decay scoring — memories that haven't been accessed fade over time.
  */
 
-import { readFile, writeFile, readdir, mkdir, unlink } from "node:fs/promises";
+import { readFile, writeFile, readdir, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 export interface MemoryEntry {

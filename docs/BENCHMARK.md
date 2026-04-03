@@ -190,6 +190,23 @@ These scores are estimates based on running the same 40-prompt suite against fro
 | GPT-4o | ~110/120 | ~91.7% | Strong but occasionally ignores tools for "easy" questions. |
 | Base Qwen 3.5 35B | ~55/120 | ~45.8% | Without fine-tuning, frequently refuses tool calls or hallucinates arguments. |
 
+### BFCL — Independent Validation (Wrench 35B)
+
+In addition to our internal benchmark, Wrench 35B v7 scores **82.0%** on the [Berkeley Function Calling Leaderboard](https://gorilla.cs.berkeley.edu/leaderboard.html) (BFCL) non_live/AST category — an independent, standardized benchmark for function/tool calling across 1,390 test cases.
+
+| Category | Accuracy | Correct/Total |
+|----------|----------|---------------|
+| Simple (Python) | 84.75% | 339/400 |
+| Simple (Java) | 44.0% | 44/100 |
+| Simple (JavaScript) | 56.0% | 28/50 |
+| Multiple | 84.5% | 169/200 |
+| Parallel | 85.0% | 170/200 |
+| Parallel Multiple | 82.5% | 165/200 |
+| Irrelevance Detection | 88.75% | 213/240 |
+| **Overall** | **82.0%** | **1128/1390** |
+
+BFCL tests raw function-call syntax across languages, parallel invocations, and irrelevance detection — a different axis than our agentic benchmark. Together, the two benchmarks show Wrench performs well on both structured function calling and real-world agent workflows.
+
 ### Key Takeaway
 
 Wrench v7 closes the gap between a 35B local model and frontier APIs. The base Qwen 3.5 35B scores roughly 55/120 — fine-tuning with the Wrench dataset brings that to 118/120, a **63-point improvement** that matches Claude Opus across all 8 categories, running locally on consumer hardware.

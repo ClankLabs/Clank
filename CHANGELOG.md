@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.12.1] — 2026-04-04
+
+### Fixed
+- **`/models` responsiveness** — local server detection now runs all probes in parallel (~3s instead of ~15s sequential). Command has a 5s race timeout so it never freezes the bot.
+- **Telegram `/models` menu** — added to bot command menu so it appears in the `/` picker.
+- **CLI `/models` help** — added to chat mode help text.
+
+---
+
 ## [1.12.0] — 2026-04-04
 
 ### Added

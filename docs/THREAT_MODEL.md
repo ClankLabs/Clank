@@ -2,7 +2,7 @@
 
 An honest assessment of what Clank defends against and what it doesn't.
 
-**Version:** 1.11.2 | **Last Updated:** 2026-04-01
+**Version:** 1.11.3 | **Last Updated:** 2026-04-04
 
 ---
 
@@ -33,13 +33,15 @@ If you don't trust the model you're running, you shouldn't give it tool access. 
 
 ## What We Defend Against
 
-### Bash Command Blocklist (25 patterns)
+### Bash Command Blocklist (32 patterns)
 
-The gateway maintains a blocklist of 25 shell command patterns known to be destructive or dangerous:
+The harness maintains a blocklist of 32 shell command patterns known to be destructive or dangerous:
 
 - Filesystem destruction (`rm -rf /`, `rm -rf ~`, `rm -rf *`)
 - Disk-level operations (`mkfs`, `dd if=`)
 - Fork bombs (`:(){`)
+- Nested shell payloads (`bash -c` / `sh -c` with destructive commands)
+- Interpreter escapes (`python -c`, `perl -e`, `ruby -e`, `node -e` calling system/exec)
 - Privilege escalation patterns (`chmod 777 /`, `chown root`)
 - System-critical paths (`/etc/passwd`, `/etc/shadow`, `/boot`)
 - Network exfiltration patterns (reverse shells, `nc -l`)
@@ -100,10 +102,10 @@ We believe in being honest about limitations. Here's what the security measures 
 
 ### Bash Blocklist Bypass
 
-A determined model can bypass the 25-pattern blocklist through indirect methods:
+A determined model can bypass the 32-pattern blocklist through indirect methods:
 
 - Writing a script to disk and executing it
-- Using language interpreters (`python -c "import os; os.system(...)"`)
+- Using variable expansion to construct commands at runtime (`cmd="rm"; $cmd -rf /`)
 - Chaining innocuous commands in unexpected ways
 - Using aliases or environment variables to obscure intent
 

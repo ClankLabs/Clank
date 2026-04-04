@@ -8,13 +8,13 @@
 
 ## Overview
 
-Clank is a local-first AI agent gateway. **Your data stays on your machine.** We collect nothing.
+Clank is a local-first AI agent harness. **Your data stays on your machine.** We collect nothing.
 
 ---
 
 ## Data Collection
 
-**Clank collects no data.** Zero telemetry, zero analytics, zero usage tracking. The gateway is a local process — it does not phone home, ping analytics services, or report anything to us.
+**Clank collects no data.** Zero telemetry, zero analytics, zero usage tracking. The harness is a local process — it does not phone home, ping analytics services, or report anything to us.
 
 We genuinely don't know how many people use Clank. We find out when people open GitHub issues.
 
@@ -61,7 +61,7 @@ When using cloud providers, your prompts and responses are sent to the provider.
 
 - **API keys are never sent to the LLM** — config is redacted before injection into agent context
 - **Bot tokens are never sent to the LLM** — same redaction applies
-- **Auth tokens are never sent to the LLM** — gateway credentials stay out of conversation history
+- **Auth tokens are never sent to the LLM** — harness credentials stay out of conversation history
 - **Local models never leave your machine** — all processing is local
 
 ---

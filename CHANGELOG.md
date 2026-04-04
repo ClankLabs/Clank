@@ -6,13 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.11.3] — 2026-04-04
+
+### Improved
+- **Bash blocklist hardened** — expanded from 27 to 32 patterns. New coverage:
+  - **Nested shell payloads** — `bash -c` / `sh -c` wrapping destructive commands (rm, mkfs, dd, chmod 777)
+  - **Fork bomb** — `:(){:|:&};:` pattern (was documented in threat model but missing from code)
+  - **Interpreter escapes** — `python -c`, `perl -e`, `ruby -e`, `node -e` calling `system()`, `exec()`, `os.system()`, or `child_process`
+- **Threat model updated** — bypass section now reflects closed vectors and documents remaining gaps (variable expansion).
+
+### Changed
+- **Branding** — "gateway" terminology replaced with "harness" across all documentation, website, and marketing copy. CLI commands (`clank gateway start/stop/restart`) unchanged. Internal code unchanged.
+
+---
+
 ## [1.11.2] — 2026-04-01
 
 ### Improved
 - **Config parse errors** — malformed `config.json5` now shows the actual parse error and file path instead of silently falling back to defaults.
 - **Setup validation** — empty Telegram/Discord bot tokens are caught during setup instead of saving `enabled: true` with no token. Port input validates range (1–65535) and checks if the port is already in use. Conflicting `--quick` and `--advanced` flags now warn.
 - **Post-setup health check** — setup now tests model connectivity after saving config and suggests `clank models test` if unreachable.
-- **Adapter startup summary** — gateway prints a clear summary of which channel adapters started and which failed (with reason).
+- **Adapter startup summary** — harness prints a clear summary of which channel adapters started and which failed (with reason).
 - **Actionable error messages** — provider "API key required" errors now include the command to fix them (`clank models add` or `clank setup`). The final fallback error gives diagnostic bullet points.
 - **Session corruption warnings** — corrupt session index or message files log a warning instead of silently resetting.
 - **TUI WebSocket safety** — malformed WebSocket frames no longer crash the TUI.
@@ -73,8 +87,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - **Signal setup wizard** — `clank setup --signal` guides through installing signal-cli, phone registration, SMS/voice verification, and config. Clank now manages the signal-cli daemon automatically.
-- **Signal daemon lifecycle** — gateway auto-starts the signal-cli daemon when Signal is enabled and stops it on shutdown. No manual daemon management needed.
-- **Update check on gateway launch** — checks npm for newer versions on startup. Prompts Y/N if an update is available. Never auto-updates.
+- **Signal daemon lifecycle** — harness auto-starts the signal-cli daemon when Signal is enabled and stops it on shutdown. No manual daemon management needed.
+- **Update check on harness launch** — checks npm for newer versions on startup. Prompts Y/N if an update is available. Never auto-updates.
 - **Health check tool** — `health_check` tool lets the agent diagnose system health (providers, adapters, memory, disk) and restart failed adapters. 24 tools total.
 
 ---
@@ -109,9 +123,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **Inline tool approvals (Discord)** — same approval flow using Discord button components. Slash commands now supported in Discord.
 
 ### Changed
-- **Discord adapter** — upgraded from non-streaming to streaming gateway calls, added slash command routing
+- **Discord adapter** — upgraded from non-streaming to streaming harness calls, added slash command routing
 - **Adapter architecture** — `toolEmoji()`, `splitMessage()`, and all shared command logic extracted to `src/adapters/commands.ts`
-- **Gateway streaming API** — added `onConfirm` callback to `handleInboundMessageStreaming()` for interactive tool approval. Adapters without confirmation UI (Signal, Web) auto-approve as before.
+- **Harness streaming API** — added `onConfirm` callback to `handleInboundMessageStreaming()` for interactive tool approval. Adapters without confirmation UI (Signal, Web) auto-approve as before.
 
 ---
 
@@ -246,7 +260,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **Collapsible thinking blocks** — model thinking/reasoning is now displayed in a separate clickable block above the response instead of being streamed into the message text. Click the "Thought" toggle to expand/collapse. Shows "Thinking..." while streaming, "Thought" when complete
 
 ### Fixed
-- **Thinking events were disconnected** — the full thinking pipeline (provider → agent → gateway → frontend) was broken at 3 points: provider yielded thinking as text for local models, agent only emitted a one-shot start event without content, and gateway didn't forward thinking events to clients. All 3 fixed
+- **Thinking events were disconnected** — the full thinking pipeline (provider → agent → harness → frontend) was broken at 3 points: provider yielded thinking as text for local models, agent only emitted a one-shot start event without content, and harness didn't forward thinking events to clients. All 3 fixed
 - **Empty responses from thinking-only models** — when a model puts all output in `reasoning_content` with empty `content` (Qwen3.5), the thinking text is now used as the response instead of showing a blank message
 
 ---
@@ -336,7 +350,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [1.4.7] — 2026-03-22
 
 ### Fixed
-- **Tool calling crashes gateway** — context compaction could split tool call / tool result message pairs, sending orphaned messages to Ollama which returns 400 errors and corrupts the session permanently; compaction now drops complete pairs together
+- **Tool calling crashes harness** — context compaction could split tool call / tool result message pairs, sending orphaned messages to Ollama which returns 400 errors and corrupts the session permanently; compaction now drops complete pairs together
 - **Orphaned tool result safety net** — Ollama provider now filters out orphaned tool results before sending to the API, preventing 400 errors even if compaction misses a pair
 
 ---
@@ -351,8 +365,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [1.4.5] — 2026-03-22
 
 ### Fixed
-- **Gateway unresponsive after messages** — WebSocket frame handler was not awaited, causing unhandled promise rejections that silently killed the gateway process
-- **Added `unhandledRejection` handler** — gateway now logs rejected promises instead of dying silently
+- **Harness unresponsive after messages** — WebSocket frame handler was not awaited, causing unhandled promise rejections that silently killed the harness process
+- **Added `unhandledRejection` handler** — harness now logs rejected promises instead of dying silently
 - **Provider timeout fallback** — all providers (Ollama, Anthropic, OpenAI, Google) now have a fallback timeout (120s local, 90s cloud) if no abort signal is provided, preventing indefinite hangs when a model is unresponsive
 
 ---
@@ -360,7 +374,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [1.4.4] — 2026-03-22
 
 ### Fixed
-- **Gateway crash after 4-5 messages** — confirmation handler WebSocket listeners were never removed on timeout, accumulating orphaned handlers per message until the process crashed
+- **Harness crash after 4-5 messages** — confirmation handler WebSocket listeners were never removed on timeout, accumulating orphaned handlers per message until the process crashed
 - **Engine listener limit** — set `maxListeners` to 30 on AgentEngine (Node.js default of 10 was too low since each message cycle wires 10 event listeners)
 - **Rate limiter memory leak** — stale session entries in the rate limiter Map were never purged; added periodic cleanup when map exceeds 100 entries
 
@@ -370,7 +384,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 - **Telegram streaming stutter** — fixed race condition where multiple partial messages were sent instead of editing a single message; added synchronous guard flag to prevent duplicate `sendMessage` calls while the initial message promise is in-flight
-- **Gateway killed by `clear` on Windows** — replaced `fork()` with `spawn()` + `windowsHide` for background gateway process; `fork` kept an IPC channel tied to the parent console, so clearing PowerShell killed the gateway
+- **Harness killed by `clear` on Windows** — replaced `fork()` with `spawn()` + `windowsHide` for background harness process; `fork` kept an IPC channel tied to the parent console, so clearing PowerShell killed the harness
 - **`clank update` fails on Windows** — added `--force` to the npm install command to overwrite locked shim files (`clank.ps1`, `clank.cmd`)
 
 ---
@@ -446,7 +460,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [1.2.1] — 2026-03-23
 
 ### Fixed
-- **Gateway crash on restart** — stale Telegram messages queued while offline no longer flood the model. Messages older than 30s before startup are dropped.
+- **Harness crash on restart** — stale Telegram messages queued while offline no longer flood the model. Messages older than 30s before startup are dropped.
 - **Parallel model overload** — Telegram messages from the same chat are now processed sequentially (per-chat queue) instead of all at once.
 
 ---
@@ -458,7 +472,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   - Tier 1 (fast): system prompt budgeting, tool result dedup, message truncation, aggressive dropping
   - Tier 2 (LLM-summarized): model generates conversation recap replacing oldest messages. Preserves meaning over long sessions.
   - Token budgeting: reserves 25% for response, budgets system prompt separately from conversation
-- **`clank update`** — update to latest npm version, preserves config/sessions/memory, restarts gateway
+- **`clank update`** — update to latest npm version, preserves config/sessions/memory, restarts harness
 
 ---
 
@@ -470,27 +484,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **Config redaction:** API keys, bot tokens, and auth tokens are stripped from config before exposing to LLM context or WebSocket clients
 - **Prototype pollution:** config.set RPC blocks `__proto__`, `constructor`, `prototype` keys
 - **SSRF protection:** web_fetch blocks localhost, cloud metadata endpoints (169.254.169.254), .internal/.local hostnames, file:// protocol
-- **Gateway auth:** auto-generates token on startup if mode is "token" but no token configured — prevents accidental open gateways
+- **Harness auth:** auto-generates token on startup if mode is "token" but no token configured — prevents accidental open gateways
 - **Status endpoint:** /status now requires Bearer token authentication
-- **Tool confirmations:** gateway respects autoApprove config instead of blindly approving — 30s timeout defaults to deny
+- **Tool confirmations:** harness respects autoApprove config instead of blindly approving — 30s timeout defaults to deny
 - **.gitignore:** added config.json5, *.pem, *.key, credentials.json to prevent accidental secret commits
 
 ### Bug Fixes
-- **Telegram bot not responding:** `bot.start()` was blocking (awaited) which prevented the gateway from finishing startup. Now runs non-blocking with `onStart` callback.
+- **Telegram bot not responding:** `bot.start()` was blocking (awaited) which prevented the harness from finishing startup. Now runs non-blocking with `onStart` callback.
 - **Telegram allowFrom:** now matches both `@username` and numeric user IDs (was only matching numeric)
 - **grammY missing:** added as real dependency (was dynamic import that failed silently)
 - **Local server URL not saved:** setup wizard now saves detected server baseUrl for all local providers (was only saving Ollama)
 - **Port conflict:** default port changed to 18790 (was 18789, conflicted with OpenClaw/Claude Code)
-- **--web flag:** `clank chat --web` now auto-starts gateway and opens browser
-- **Gateway text/message param:** accepts both `message` and `text` fields from clients
+- **--web flag:** `clank chat --web` now auto-starts harness and opens browser
+- **Harness text/message param:** accepts both `message` and `text` fields from clients
 
 ### Added
 - **TUI:** rich terminal UI with streaming, tool cards, thinking blocks, agent/session/model pickers, slash commands, shell integration (`!command`)
 - **Web Control UI:** 8-panel dashboard — Chat, Agents, Sessions, Config (JSON editor), Pipelines, Cron, Logs, Channels
 - **Telegram slash commands:** /help, /status, /agents, /agent, /sessions, /new, /reset, /model, /think
 - **CLI commands:** tui, dashboard, pipeline, cron, channels, uninstall
-- **Background gateway:** runs as detached process, Telegram/Discord stay alive while CLI/TUI/Web run on top
-- **Gateway singleton:** refuses to start if already running on the port
+- **Background harness:** runs as detached process, Telegram/Discord stay alive while CLI/TUI/Web run on top
+- **Harness singleton:** refuses to start if already running on the port
 - **Self-config tools (8):** config, manage_channel, manage_agent, manage_model, manage_session, manage_cron, gateway_status, send_message
 - **Google Gemini provider** with streaming and function calling
 - **Memory system:** TF-IDF cosine similarity with decay scoring, categorized storage
@@ -500,7 +514,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **`clank uninstall`:** removes all data, daemon, and npm package
 
 ### Changed
-- Default command (`clank` with no args) starts gateway in background then launches TUI
+- Default command (`clank` with no args) starts harness in background then launches TUI
 - `clank gateway start` now runs in background by default (`--foreground` for blocking mode)
 - `clank gateway restart` fully implemented (stop + start)
 - Protocol updated to v1 spec with 17 RPC methods and 11 event types
@@ -512,7 +526,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 Initial release — Clank Gateway foundation.
 
 ### Architecture
-- Single gateway daemon (HTTP + WebSocket on port 18789)
+- Single harness daemon (HTTP + WebSocket on port 18789)
 - WebSocket JSON-RPC protocol v1 with 17 RPC methods and 11 event types
 - All interfaces are equal — CLI, TUI, Web UI, Telegram, Discord
 
@@ -535,7 +549,7 @@ Initial release — Clank Gateway foundation.
 - **Self-config (8):** config, manage_channel, manage_agent, manage_model, manage_session, manage_cron, gateway_status, send_message
 
 ### Interfaces
-- **CLI:** 12 commands — chat, gateway, setup, fix, models, agents, daemon, tui, dashboard, pipeline, cron, channels
+- **CLI:** 12 commands — chat, harness, setup, fix, models, agents, daemon, tui, dashboard, pipeline, cron, channels
 - **TUI:** Rich terminal UI with streaming, tool cards, thinking blocks, agent/session/model pickers, slash commands, shell integration
 - **Web Control UI:** 8-panel SPA — Chat, Agents, Sessions, Config (JSON editor), Pipelines, Cron, Logs, Channels
 - **Telegram:** Full adapter with slash commands, typing indicators, response chunking, permission allowlists, group mention checking
@@ -561,7 +575,7 @@ Initial release — Clank Gateway foundation.
 - AES-256-GCM encryption for API keys (PBKDF2, 100K iterations)
 - PIN verification with timing-safe comparison
 - 3-tier tool safety system (low/medium/high) with auto-approve settings
-- Gateway binds to localhost by default, token-based auth
+- Harness binds to localhost by default, token-based auth
 
 ### Onboarding
 - `clank setup` wizard — Quick Start (under 2 minutes) and Advanced flows

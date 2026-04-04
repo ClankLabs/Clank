@@ -24,6 +24,14 @@ const BLOCKED_PATTERNS = [
   // Shell-in-shell execution (limits encoded payloads)
   /\|\s*(bash|sh|cmd|powershell|pwsh)\b/i,
   /base64\s+(-d|--decode).*\|\s*(bash|sh)/i,
+  // Nested shell — scan for dangerous payloads inside -c arguments
+  /\b(bash|sh)\s+-c\s+.*\brm\s+.*-[a-z]*r[a-z]*f/i,
+  /\b(bash|sh)\s+-c\s+.*\b(mkfs|dd\s+.*of=\/dev|format\s+[a-z]:)/i,
+  /\b(bash|sh)\s+-c\s+.*\bchmod\s+.*777\s+\//i,
+  // Fork bomb
+  /:\(\)\s*\{.*:\|:.*&.*\}\s*;?\s*:/,
+  // Interpreter escapes — block system()/exec() inside -c/-e flags
+  /\b(python3?|perl|ruby|node)\s+-(c|e)\s+.*\b(system|exec|os\.system|child_process)\b/i,
   // Direct system damage
   /\bchmod\s+.*777\s+\//i,
   /\bchown\s+.*\//i,

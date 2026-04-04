@@ -203,7 +203,7 @@ All adapters (Telegram, Discord, Signal) share a unified command handler (`src/a
 
 | Layer | Implementation |
 |-------|---------------|
-| **Bash blocklist** | 25 patterns matching destructive commands |
+| **Bash blocklist** | 32 patterns matching destructive commands |
 | **Config redaction** | API keys and secrets never exposed through RPC or tool outputs |
 | **SSRF protection** | Blocks private IPs, link-local, metadata endpoints, IPv6 equivalents |
 | **AES-256-GCM** | Stored credentials encrypted at rest |

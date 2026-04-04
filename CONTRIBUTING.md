@@ -1,6 +1,6 @@
 # Contributing to Clank
 
-Welcome! Clank is an open-source, local-first AI agent gateway. Contributions are welcome from everyone — whether you're fixing a typo, adding a provider, or training the next version of Wrench.
+Welcome! Clank is an open-source, local-first AI agent harness. Contributions are welcome from everyone — whether you're fixing a typo, adding a provider, or training the next version of Wrench.
 
 ---
 
@@ -8,7 +8,7 @@ Welcome! Clank is an open-source, local-first AI agent gateway. Contributions ar
 
 | Type | Description |
 |------|-------------|
-| **Code** | Gateway features, bug fixes, new providers, new tools |
+| **Code** | Harness features, bug fixes, new providers, new tools |
 | **Training Data** | New JSONL examples for the [Wrench model](https://github.com/ClankLabs/wrench-training-data) |
 | **Benchmark** | Test cases that push tool-calling accuracy |
 | **Bug Reports** | File [GitHub Issues](https://github.com/ClankLabs/Clank/issues) with steps to reproduce |
@@ -24,7 +24,7 @@ cd Clank
 npm install
 npm run build        # tsup builds to dist/
 clank setup          # first-time config wizard
-clank                # start gateway + TUI
+clank                # start harness + TUI
 ```
 
 ### Project Structure
@@ -35,7 +35,7 @@ src/
   cli/             # CLI entry point, TUI, chat mode
   config/          # Config loader, hot-reload, redaction
   engine/          # AgentEngine (ReAct loop), ContextEngine, system prompt
-  gateway/         # WebSocket + HTTP server
+  harness/         # WebSocket + HTTP server
   memory/          # TF-IDF memory engine
   providers/       # 8 provider adapters + prompt fallback
   tasks/           # Sub-agent task registry

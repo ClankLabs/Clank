@@ -98,7 +98,7 @@ export async function runTui(opts: {
     // Send connect handshake
     ws.send(JSON.stringify({
       type: "connect",
-      params: { auth: { token }, mode: "tui", version: "1.11.2" },
+      params: { auth: { token }, mode: "tui", version: "1.11.3" },
     }));
   });
 

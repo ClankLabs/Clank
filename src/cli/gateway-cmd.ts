@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Read version for update check
-let version = "1.11.2";
+let version = "1.11.3";
 try {
   const { readFileSync } = await import("node:fs");
   const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8"));

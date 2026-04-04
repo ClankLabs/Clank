@@ -42,15 +42,17 @@ We will acknowledge receipt within 48 hours and provide a fix timeline within 7 
 - **3-tier safety system** — tools classified as low / medium / high risk
 - Configurable auto-approve per safety level (default: low=auto, medium/high=confirm)
 - **Inline tool approvals** — Telegram shows InlineKeyboard, Discord shows Button components with Approve / Always / Deny options. 30-second timeout defaults to approve.
-- **Bash blocklist** — 25 patterns covering:
+- **Bash blocklist** — 32 patterns covering:
   - Recursive deletion (`rm -rf`, `Remove-Item`, `del /s`)
   - Disk formatting (`format`, `mkfs`, `diskpart`)
   - Force push to main/master branches
   - Shell-in-shell execution (pipe to bash, base64 decode)
+  - Nested shell payloads (`bash -c` / `sh -c` with dangerous commands)
+  - Interpreter escapes (`python -c`, `perl -e`, `ruby -e`, `node -e`)
+  - Fork bombs
   - System commands (`shutdown`, `reboot`, `chmod 777`)
   - PowerShell encoded commands
   - Registry modification
-  - Fork bombs
 
 ### Encryption
 
@@ -95,7 +97,7 @@ We will acknowledge receipt within 48 hours and provide a fix timeline within 7 
 - **Pinned dependencies** — all versions in `package.json` use exact versions (no `^` or `~` ranges)
 - **Lockfile committed** — `package-lock.json` committed; CI uses `npm ci` for reproducible installs
 - **Minimal dependency tree** — 4 runtime dependencies (commander, grammy, json5, ws)
-- **npm audit clean** as of v1.11.2
+- **npm audit clean** as of v1.11.3
 - **npm 2FA** — publishing requires two-factor authentication on the maintainer's npm account
 
 ---

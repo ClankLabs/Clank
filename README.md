@@ -5,12 +5,12 @@
 <h1 align="center">Clank</h1>
 
 <p align="center">
-  <b>Local-first AI agent gateway.</b><br />
+  <b>Local-first AI agent harness.</b><br />
   One daemon. Every interface. Your models, your machine, your data.
 </p>
 
 <p align="center">
-  <a href="https://github.com/ClankLabs/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.11.2-blue.svg" alt="Version" /></a>
+  <a href="https://github.com/ClankLabs/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.11.3-blue.svg" alt="Version" /></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.npmjs.com/package/@clanklabs/clank"><img src="https://img.shields.io/npm/v/@clanklabs/clank.svg" alt="npm" /></a>
   <a href="https://github.com/ClankLabs/Clank/stargazers"><img src="https://img.shields.io/github/stars/ClankLabs/Clank.svg" alt="Stars" /></a>
@@ -29,7 +29,7 @@
 
 ## What is Clank?
 
-Clank is a personal AI gateway that connects your preferred interfaces to AI agents running local or cloud models. One daemon runs in the background; every interface — CLI, TUI, browser, Telegram, Discord, Signal — shares sessions, memory, and agent state.
+Clank is a personal AI harness that connects your preferred interfaces to AI agents running local or cloud models. One daemon runs in the background; every interface — CLI, TUI, browser, Telegram, Discord, Signal — shares sessions, memory, and agent state.
 
 ```
                 ┌──────────────────────────────┐
@@ -66,7 +66,7 @@ clank setup
 clank
 ```
 
-That's it. Setup auto-detects local models, configures the gateway, and gets you chatting in under 2 minutes. See the [Install Guide](docs/INSTALL.md) for platform-specific instructions — [Windows](docs/INSTALL-WINDOWS.md) | [macOS](docs/INSTALL-MACOS.md) | [Linux](docs/INSTALL-LINUX.md).
+That's it. Setup auto-detects local models, configures the harness, and gets you chatting in under 2 minutes. See the [Install Guide](docs/INSTALL.md) for platform-specific instructions — [Windows](docs/INSTALL-WINDOWS.md) | [macOS](docs/INSTALL-MACOS.md) | [Linux](docs/INSTALL-LINUX.md).
 
 ## Security Notice
 
@@ -90,6 +90,7 @@ ollama create wrench -f Modelfile
 
 # llama.cpp
 ./llama-server -m wrench-35B-A3B-Q4_K_M.gguf --jinja -ngl 100 -fa on \
+  --cache-type-k q8_0 --cache-type-v q8_0 \
   --temp 0.4 --top-k 20 --top-p 0.95 --min-p 0 --presence-penalty 1.5 -c 32768
 ```
 
@@ -120,13 +121,13 @@ ollama create wrench -f Modelfile
 
 ```bash
 # Daily use
-clank                         # Start gateway + TUI (recommended)
-clank chat                    # Direct CLI chat (no gateway needed)
-clank chat --web              # Start gateway + open Web UI
-clank tui                     # Rich TUI connected to gateway
+clank                         # Start harness + TUI (recommended)
+clank chat                    # Direct CLI chat (no harness needed)
+clank chat --web              # Start harness + open Web UI
+clank tui                     # Rich TUI connected to harness
 clank dashboard               # Open Web UI in browser
 
-# Gateway management
+# Harness management
 clank gateway start           # Start in background
 clank gateway stop            # Stop
 clank gateway status          # Show status, clients, sessions
@@ -181,10 +182,10 @@ Models without native tool calling automatically use prompt-based fallback — t
 | Layer | Protection |
 |-------|------------|
 | **Workspace containment** | File tools blocked outside workspace via `guardPath()` |
-| **Bash blocklist** | 25 patterns covering destructive commands (`rm -rf`, `mkfs`, fork bombs, etc.) |
+| **Bash blocklist** | 32 patterns covering destructive commands (`rm -rf`, `mkfs`, fork bombs, nested shells, interpreter escapes, etc.) |
 | **API key redaction** | Keys never sent to LLM context or exposed via RPC |
 | **SSRF protection** | `web_fetch` blocks localhost, private IPs, cloud metadata, internal hosts |
-| **Gateway auth** | Token-based, auto-generated, localhost-only by default |
+| **Harness auth** | Token-based, auto-generated, localhost-only by default |
 | **Encryption** | AES-256-GCM for API keys at rest (PBKDF2, 100K iterations) |
 | **Rate limiting** | 20 requests/min/session by default |
 | **Supply chain** | All deps pinned to exact versions, lockfile committed, npm 2FA |

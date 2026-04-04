@@ -14,6 +14,10 @@ We publish system prompts. We publish training data. We don't hide model behavio
 
 This isn't about ideology. It's about building tools that developers actually trust enough to give filesystem and shell access to. Opacity kills trust, and trust is the whole product.
 
+## Why This Exists
+
+The API token race is turning AI-assisted development into a luxury. There are people with builder brain -- ideas, drive, and the itch to create -- who got locked out by the cost of entry. People who wanted to be developers their whole lives but got pulled into other jobs, with no free time and no budget for hundreds a month in API fees. Clank Labs exists so those people can build with capable AI on their own hardware, for free. If we can make that possible, our goals are met.
+
 ---
 
 ## System Prompt
@@ -108,7 +112,7 @@ Smaller local models are less reliable at following safety instructions. A 7B mo
 
 ### The Bash Blocklist Is a Safety Net
 
-The 25-pattern blocklist catches the obvious cases: `rm -rf /`, fork bombs, disk formatting. It does not catch a model that writes a Python script to do the same thing. It's a first line of defense, not a guarantee. See the [threat model](THREAT_MODEL.md) for details.
+The 32-pattern blocklist catches the obvious cases: `rm -rf /`, fork bombs, disk formatting, nested shell payloads, and interpreter escapes. It does not catch a model that uses variable expansion to construct commands at runtime. It's a first line of defense, not a guarantee. See the [threat model](THREAT_MODEL.md) for details.
 
 ### Prompt Compliance Varies by Model
 

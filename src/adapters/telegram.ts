@@ -62,6 +62,7 @@ export class TelegramAdapter extends ChannelAdapter {
         { command: "kill", description: "Kill a background task" },
         { command: "killall", description: "Kill all running tasks" },
         { command: "model", description: "Show current model" },
+        { command: "models", description: "List and switch models" },
         { command: "sessions", description: "List recent sessions" },
         { command: "think", description: "Toggle thinking display" },
         { command: "version", description: "Show Clank version" },

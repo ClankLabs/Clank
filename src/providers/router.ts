@@ -234,49 +234,32 @@ export async function resolveWithFallback(
 export async function detectLocalServers(): Promise<
   Array<{ provider: string; baseUrl: string; models: string[] }>
 > {
+  // Probe all servers in parallel — each detect() has its own 3s timeout,
+  // so this completes in ~3s total instead of ~15s sequential.
+  const [ollamaModels, lmStudioModels, llamaCpp8080, llamaCpp14438, vllmModels] = await Promise.all([
+    OllamaProvider.detect(),
+    OpenAIProvider.detect("http://127.0.0.1:1234"),
+    OpenAIProvider.detect("http://127.0.0.1:8080"),
+    OpenAIProvider.detect("http://127.0.0.1:14438"),
+    OpenAIProvider.detect("http://127.0.0.1:8000"),
+  ]);
+
   const servers: Array<{ provider: string; baseUrl: string; models: string[] }> = [];
 
-  // Check Ollama
-  const ollamaModels = await OllamaProvider.detect();
   if (ollamaModels) {
-    servers.push({
-      provider: "ollama",
-      baseUrl: "http://127.0.0.1:11434",
-      models: ollamaModels,
-    });
+    servers.push({ provider: "ollama", baseUrl: "http://127.0.0.1:11434", models: ollamaModels });
   }
-
-  // Check LM Studio
-  const lmStudioModels = await OpenAIProvider.detect("http://127.0.0.1:1234");
   if (lmStudioModels) {
-    servers.push({
-      provider: "lmstudio",
-      baseUrl: "http://127.0.0.1:1234",
-      models: lmStudioModels,
-    });
+    servers.push({ provider: "lmstudio", baseUrl: "http://127.0.0.1:1234", models: lmStudioModels });
   }
-
-  // Check llama.cpp (common ports)
-  for (const port of [8080, 14438]) {
-    const llamaCppModels = await OpenAIProvider.detect(`http://127.0.0.1:${port}`);
-    if (llamaCppModels) {
-      servers.push({
-        provider: "llamacpp",
-        baseUrl: `http://127.0.0.1:${port}`,
-        models: llamaCppModels,
-      });
-      break; // Found one, stop checking
-    }
+  // llama.cpp — prefer port 8080, fall back to 14438
+  const llamaCppModels = llamaCpp8080 || llamaCpp14438;
+  const llamaCppPort = llamaCpp8080 ? 8080 : 14438;
+  if (llamaCppModels) {
+    servers.push({ provider: "llamacpp", baseUrl: `http://127.0.0.1:${llamaCppPort}`, models: llamaCppModels });
   }
-
-  // Check vLLM
-  const vllmModels = await OpenAIProvider.detect("http://127.0.0.1:8000");
   if (vllmModels) {
-    servers.push({
-      provider: "vllm",
-      baseUrl: "http://127.0.0.1:8000",
-      models: vllmModels,
-    });
+    servers.push({ provider: "vllm", baseUrl: "http://127.0.0.1:8000", models: vllmModels });
   }
 
   return servers;

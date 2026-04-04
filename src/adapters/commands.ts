@@ -161,9 +161,12 @@ export async function handleAdapterCommand(
           lines.push(`\nProviders: ${cloudProviders.join(", ")}`);
         }
 
-        // Detect local servers and their models
+        // Detect local servers and their models (5s max — don't freeze the bot)
         try {
-          const servers = await detectLocalServers();
+          const servers = await Promise.race([
+            detectLocalServers(),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+          ]);
           for (const s of servers) {
             const modelList = s.models.slice(0, 8).join(", ");
             const more = s.models.length > 8 ? ` (+${s.models.length - 8} more)` : "";

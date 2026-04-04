@@ -279,12 +279,18 @@ async function handleSlashCommand(
       console.log(dim("Commands:"));
       console.log(dim("  /help     — Show this help"));
       console.log(dim("  /model    — Show current model"));
+      console.log(dim("  /models   — List and switch models"));
       console.log(dim("  /clear    — Clear conversation"));
       console.log(dim("  /exit     — Exit"));
       break;
 
     case "model":
       console.log(dim(`Model: ${engine.identity.model.primary}`));
+      break;
+
+    case "models":
+      console.log(dim("Use the gateway for /models (clank gateway start)."));
+      console.log(dim("Or run: clank models"));
       break;
 
     case "clear":

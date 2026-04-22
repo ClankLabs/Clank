@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ClankLabs/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.12.1-blue.svg" alt="Version" /></a>
+  <a href="https://github.com/ClankLabs/Clank/releases/latest"><img src="https://img.shields.io/badge/version-1.12.2-blue.svg" alt="Version" /></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.npmjs.com/package/@clanklabs/clank"><img src="https://img.shields.io/npm/v/@clanklabs/clank.svg" alt="npm" /></a>
   <a href="https://github.com/ClankLabs/Clank/stargazers"><img src="https://img.shields.io/github/stars/ClankLabs/Clank.svg" alt="Stars" /></a>
@@ -84,14 +84,19 @@ Clank is a **developer tool** that gives AI agents full access to your file syst
 | **Wrench 9B** | 114/120 (95%) | — | Qwen3.5-9B (dense) | 8GB | [HuggingFace](https://huggingface.co/ClankLabs/Wrench-9B-Q4_K_M-GGUF) |
 
 ```bash
-# Ollama
+# Ollama (9B or 35B GGUF)
 ollama create wrench -f Modelfile
 # Set as primary model: "primary": "ollama/wrench"
 
-# llama.cpp
+# llama.cpp — Wrench 35B
 ./llama-server -m wrench-35B-A3B-Q4_K_M.gguf --jinja -ngl 100 -fa on \
   --cache-type-k q8_0 --cache-type-v q8_0 \
   --temp 0.4 --top-k 20 --top-p 0.95 --min-p 0 --presence-penalty 1.5 -c 32768
+
+# llama.cpp — Wrench 9B
+./llama-server -m wrench-9B-Q4_K_M.gguf --jinja -ngl 100 -fa on \
+  --cache-type-k q8_0 --cache-type-v q8_0 \
+  --temp 0.4 --top-k 20 --top-p 0.95 --min-p 0 --presence-penalty 1.5 -c 8192
 ```
 
 ---
@@ -174,6 +179,8 @@ clank uninstall               # Remove everything
 | **OpenRouter** | Cloud | API key via `clank setup` or config |
 
 Models without native tool calling automatically use prompt-based fallback — tools are injected into the system prompt and parsed from text output. Every local model gets tool support out of the box.
+
+`/model`, `/models`, and `clank models list` also show the active provider, local/cloud status, tool-call mode, context window expectations, and provider configuration state. This makes it easier to see whether a model is using native tool calls or prompt fallback before you start a long session.
 
 ---
 

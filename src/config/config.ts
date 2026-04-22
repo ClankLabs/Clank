@@ -41,6 +41,11 @@ export interface ClankConfig {
       thinking?: "on" | "off" | "auto";
       /** Timeout for model responses in ms (default: 120000) */
       responseTimeout?: number;
+      /** Background sub-agent limits */
+      subagents?: {
+        maxConcurrent?: number;
+        maxSpawnDepth?: number;
+      };
     };
     list: Array<{
       id: string;

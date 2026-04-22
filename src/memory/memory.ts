@@ -14,7 +14,6 @@
 import { readFile, writeFile, readdir, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
 
 export interface MemoryEntry {
   id: string;
@@ -162,8 +161,8 @@ export class MemoryManager {
 
   /** Add a new memory */
   async add(category: MemoryEntry["category"], title: string, content: string): Promise<MemoryEntry> {
-    const id = randomUUID();
     const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50)}.md`;
+    const id = filename;
     const filePath = join(this.memoryDir, category, filename);
 
     await writeFile(filePath, `# ${title}\n\n${content}`, "utf-8");

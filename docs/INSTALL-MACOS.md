@@ -34,7 +34,7 @@ ollama pull qwen3.5
 
 Clank also auto-detects **LM Studio**, **llama.cpp**, and **vLLM** if they're running.
 
-> **Wrench** (our purpose-built agentic model) is recommended for best results. Download from [HuggingFace](https://huggingface.co/ClankLabs/Wrench-35B-A3B-Q4_K_M-GGUF) and load via Ollama with a Modelfile, or serve directly with llama.cpp.
+> **Wrench** is recommended for the most polished local agent experience. Use [Wrench 9B](https://huggingface.co/ClankLabs/Wrench-9B-Q4_K_M-GGUF) for 8GB VRAM systems or [Wrench 35B](https://huggingface.co/ClankLabs/Wrench-35B-A3B-Q4_K_M-GGUF) for larger GPUs, then load via Ollama with a Modelfile or serve directly with llama.cpp.
 
 ---
 

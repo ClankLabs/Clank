@@ -4,6 +4,7 @@
 
 import { loadConfig, saveConfig, ensureConfigDir } from "../config/index.js";
 import { detectLocalServers } from "../providers/index.js";
+import { describeModelRuntime, formatModelRuntimeLines } from "../providers/index.js";
 
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
@@ -13,8 +14,16 @@ export async function modelsList(): Promise<void> {
   const config = await loadConfig();
   console.log("");
   console.log(`  Default: ${config.agents.defaults.model.primary}`);
+  const defaultRuntime = describeModelRuntime(config.agents.defaults.model.primary, config.models.providers);
+  for (const line of formatModelRuntimeLines(defaultRuntime, "    ")) {
+    console.log(dim(line));
+  }
   if (config.agents.defaults.model.fallbacks?.length) {
     console.log(`  Fallbacks: ${config.agents.defaults.model.fallbacks.join(", ")}`);
+    for (const fallback of config.agents.defaults.model.fallbacks) {
+      const runtime = describeModelRuntime(fallback, config.models.providers);
+      console.log(dim(`    - ${fallback}: ${runtime.locality}, ${runtime.toolMode}, ${runtime.providerStatus}`));
+    }
   }
   console.log("");
   console.log(dim("  Configured providers:"));

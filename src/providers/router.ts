@@ -199,6 +199,7 @@ export async function resolveWithFallback(
   opts?: { maxResponseTokens?: number },
 ): Promise<ResolvedProvider> {
   const chain = [primary, ...fallbacks];
+  const failures: string[] = [];
 
   for (const modelId of chain) {
     try {
@@ -208,12 +209,14 @@ export async function resolveWithFallback(
       if (resolved.isLocal && resolved.providerName === "ollama") {
         const models = await OllamaProvider.detect(config.ollama?.baseUrl);
         if (!models) {
+          failures.push(`${modelId}: Ollama is not reachable at ${config.ollama?.baseUrl || "http://127.0.0.1:11434"}`);
           continue; // Ollama not running, try next
         }
       }
 
       return resolved;
-    } catch {
+    } catch (err) {
+      failures.push(`${modelId}: ${err instanceof Error ? err.message : String(err)}`);
       // This provider can't be created (e.g., missing API key), try next
       continue;
     }
@@ -221,6 +224,7 @@ export async function resolveWithFallback(
 
   throw new Error(
     `No available provider. Tried: ${chain.join(", ")}.\n` +
+    (failures.length ? `  Details:\n  - ${failures.join("\n  - ")}\n` : "") +
     `  - If using Ollama, make sure it's running (ollama serve)\n` +
     `  - If using a cloud provider, check your API key (clank models add)\n` +
     `  - Run 'clank models test' to diagnose connectivity`,

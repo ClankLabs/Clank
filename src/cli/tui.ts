@@ -98,7 +98,7 @@ export async function runTui(opts: {
     // Send connect handshake
     ws.send(JSON.stringify({
       type: "connect",
-      params: { auth: { token }, mode: "tui", version: "1.12.1" },
+      params: { auth: { token }, mode: "tui", version: "1.12.2" },
     }));
   });
 
@@ -297,9 +297,9 @@ function handleFrame(state: TuiState, frame: any): void {
     const res = frame as ResponseFrame;
     if (!res.ok && res.error) {
       console.log(red(`\n  Error: ${res.error}`));
-    } else if (res.ok && res.data?.summary) {
+    } else if (res.ok && typeof res.result === "object" && res.result && "summary" in res.result) {
       // Compact response — show the summary
-      const summary = (res.data.summary as string).slice(0, 500);
+      const summary = String((res.result as { summary: unknown }).summary).slice(0, 500);
       console.log(green("  Session compacted.") + dim(" Context cleared, state saved."));
       console.log(dim(`  Summary:\n${summary}`));
     }

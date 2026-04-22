@@ -91,6 +91,8 @@ export class AgentEngine extends EventEmitter {
   private maxSpawnDepth: number = 1;
   /** Whether to run a self-verification pass after the agent finishes */
   private selfVerify: boolean = false;
+  /** Optional per-turn memory injection based on the latest user message */
+  private memoryBlockProvider?: (userMessage: string) => Promise<string>;
 
   constructor(opts: {
     identity: AgentIdentity;
@@ -107,6 +109,7 @@ export class AgentEngine extends EventEmitter {
     spawnDepth?: number;
     maxSpawnDepth?: number;
     selfVerify?: boolean;
+    memoryBlockProvider?: (userMessage: string) => Promise<string>;
   }) {
     super();
     // Engine is reused across messages — each message adds/removes listeners
@@ -126,6 +129,7 @@ export class AgentEngine extends EventEmitter {
     if (opts.spawnDepth !== undefined) this.spawnDepth = opts.spawnDepth;
     if (opts.maxSpawnDepth !== undefined) this.maxSpawnDepth = opts.maxSpawnDepth;
     if (opts.selfVerify !== undefined) this.selfVerify = opts.selfVerify;
+    if (opts.memoryBlockProvider) this.memoryBlockProvider = opts.memoryBlockProvider;
 
     this.contextEngine = new ContextEngine({
       contextWindow: opts.provider.provider.contextWindow(),
@@ -134,6 +138,7 @@ export class AgentEngine extends EventEmitter {
 
     // Wire provider into context engine for tier 2 LLM-summarized compaction
     this.contextEngine.setProvider(opts.provider.provider, opts.identity.model.primary);
+    this.contextEngine.setSystemPromptSize(Math.ceil(this.systemPrompt.length / 4));
   }
 
   /** Set the system prompt */
@@ -141,6 +146,25 @@ export class AgentEngine extends EventEmitter {
     this.systemPrompt = prompt;
     // Update token budget in context engine
     this.contextEngine.setSystemPromptSize(Math.ceil(prompt.length / 4));
+  }
+
+  /** Build the prompt for this turn, including memory matched to the latest request. */
+  private async buildTurnSystemPrompt(userMessage: string): Promise<string> {
+    let prompt = this.systemPrompt;
+
+    if (this.memoryBlockProvider) {
+      try {
+        const memoryBlock = await this.memoryBlockProvider(userMessage);
+        if (memoryBlock.trim()) {
+          prompt += "\n\n---\n\n" + memoryBlock.trim();
+        }
+      } catch {
+        // Memory is helpful context, not a reason to fail the user request.
+      }
+    }
+
+    this.contextEngine.setSystemPromptSize(Math.ceil(prompt.length / 4));
+    return prompt;
   }
 
   /** Load or create a session */
@@ -219,6 +243,7 @@ export class AgentEngine extends EventEmitter {
 
     const provider = this.resolvedProvider.provider;
     const isLocal = this.resolvedProvider.isLocal;
+    const turnSystemPrompt = await this.buildTurnSystemPrompt(text);
 
     // Wrap local providers with prompt fallback if the model doesn't support
     // native tool calling. This applies to ALL local providers (Ollama,
@@ -288,7 +313,7 @@ export class AgentEngine extends EventEmitter {
 
             const streamIterator = activeProvider.stream(
               this.contextEngine.getMessages(),
-              this.systemPrompt,
+              turnSystemPrompt,
               toolDefs,
               signal,
             );
@@ -557,7 +582,7 @@ export class AgentEngine extends EventEmitter {
 
             for await (const event of activeProvider.stream(
               this.contextEngine.getMessages(),
-              this.systemPrompt,
+              turnSystemPrompt,
               toolDefs,
               signal,
             )) {

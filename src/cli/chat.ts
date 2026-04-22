@@ -14,8 +14,10 @@ import { join } from "node:path";
 import { AgentEngine, type AgentIdentity, buildSystemPrompt } from "../engine/index.js";
 import { createFullRegistry } from "../tools/index.js";
 import { resolveWithFallback } from "../providers/router.js";
+import { describeModelRuntime, formatModelRuntimeLines } from "../providers/index.js";
 import { loadConfig, ensureConfigDir, getConfigDir } from "../config/index.js";
 import { SessionStore } from "../sessions/index.js";
+import { MemoryManager } from "../memory/index.js";
 
 /** ANSI color helpers */
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -106,6 +108,10 @@ export async function runChat(opts: {
       { maxResponseTokens: config.agents.defaults.maxResponseTokens },
     );
     console.log(green(`  Connected to ${resolved.modelId}${resolved.isLocal ? " (local)" : " (cloud)"}`));
+    const diagnostics = describeModelRuntime(resolved.modelId, config.models.providers);
+    for (const line of formatModelRuntimeLines(diagnostics, "    ")) {
+      console.log(dim(line));
+    }
   } catch (err) {
     console.error(red(`Failed to connect to any model: ${err instanceof Error ? err.message : err}`));
     console.error(dim("Make sure Ollama is running or configure a cloud provider in ~/.clank/config.json5"));
@@ -135,7 +141,15 @@ export async function runChat(opts: {
     identity,
     workspaceDir: identity.workspace,
     channel: "cli",
+    compact: config.agents.defaults.compactPrompt ?? false,
+    thinking: config.agents.defaults.thinking ?? "auto",
+    isLocal: resolved.isLocal,
+    canSpawn: false,
   });
+
+  const memoryManager = new MemoryManager(join(getConfigDir(), "memory"));
+  await memoryManager.init();
+  const memoryBudget = resolved.isLocal ? 800 : 4000;
 
   // Create engine
   const engine = new AgentEngine({
@@ -146,6 +160,8 @@ export async function runChat(opts: {
     autoApprove: config.tools.autoApprove,
     systemPrompt,
     selfVerify: config.behavior?.selfVerify ?? false,
+    memoryBlockProvider: (userMessage) =>
+      memoryManager.buildMemoryBlock(userMessage, identity.workspace, memoryBudget),
   });
 
   // Load session
@@ -213,7 +229,7 @@ export async function runChat(opts: {
   console.log(cyan("  / __|| | __ _  _ _ | |__"));
   console.log(cyan(" | (__ | |/ _` || ' \\| / /"));
   console.log(cyan("  \\___||_|\\__,_||_||_|_\\_\\"));
-  console.log(dim(`  v1.12.1 | ${resolved.modelId} | ${identity.toolTier} tier`));
+  console.log(dim(`  v1.12.2 | ${resolved.modelId} | ${identity.toolTier} tier`));
   console.log(dim("  Type your message. Press Ctrl+C to exit.\n"));
 
   // Interactive readline loop

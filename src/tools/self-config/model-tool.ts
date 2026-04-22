@@ -3,7 +3,7 @@
  */
 
 import { loadConfig, saveConfig } from "../../config/index.js";
-import { detectLocalServers } from "../../providers/index.js";
+import { detectLocalServers, describeModelRuntime, formatModelRuntimeLines } from "../../providers/index.js";
 import type { Tool, ValidationResult } from "../types.js";
 
 export const modelTool: Tool = {
@@ -51,6 +51,10 @@ export const modelTool: Tool = {
     if (action === "list") {
       const lines: string[] = [];
       lines.push(`Default: ${config.agents.defaults.model.primary}`);
+      lines.push(...formatModelRuntimeLines(
+        describeModelRuntime(config.agents.defaults.model.primary, config.models.providers),
+        "  ",
+      ));
       if (config.agents.defaults.model.fallbacks?.length) {
         lines.push(`Fallbacks: ${config.agents.defaults.model.fallbacks.join(", ")}`);
       }

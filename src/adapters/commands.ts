@@ -9,7 +9,7 @@
 import type { GatewayServer } from "../gateway/server.js";
 import type { ClankConfig } from "../config/index.js";
 import { loadConfig, saveConfig } from "../config/index.js";
-import { detectLocalServers } from "../providers/index.js";
+import { detectLocalServers, describeModelRuntime, formatModelRuntimeLines } from "../providers/index.js";
 
 export interface CommandContext {
   gateway: GatewayServer | null;
@@ -63,6 +63,7 @@ export async function handleAdapterCommand(
 
     case "status": {
       const model = ctx.config?.agents?.defaults?.model?.primary || "unknown";
+      const runtime = ctx.config ? describeModelRuntime(model, ctx.config.models.providers) : null;
       const agentCount = (ctx.config?.agents as any)?.list?.length || 0;
       const tasks = ctx.gateway?.getTaskRegistry()?.list() || [];
       const runningTasks = tasks.filter((t: any) => t.status === "running").length;
@@ -70,10 +71,12 @@ export async function handleAdapterCommand(
         "📊 Status",
         "",
         `Model: ${model}`,
+        runtime ? `Tools: ${runtime.toolMode}` : "",
+        runtime ? `Context: ${runtime.context}` : "",
         `Agents: ${agentCount || 1} configured`,
         `Tasks: ${runningTasks} running / ${tasks.length} total`,
         `Chat: ${ctx.isGroup ? "group" : "DM"} (${ctx.chatId})`,
-      ].join("\n");
+      ].filter(Boolean).join("\n");
     }
 
     case "agents": {
@@ -145,6 +148,10 @@ export async function handleAdapterCommand(
       // /models — list available models from all configured providers
       if (command === "models") {
         const lines = [`🧠 Models\n\nCurrent: ${currentModel}`];
+        if (ctx.config) {
+          const runtime = describeModelRuntime(currentModel, ctx.config.models.providers);
+          lines.push(formatModelRuntimeLines(runtime, "  ").join("\n"));
+        }
         if (fallbacks.length > 0) {
           lines.push(`Fallbacks: ${fallbacks.join(", ")}`);
         }
@@ -182,6 +189,10 @@ export async function handleAdapterCommand(
 
       // /model — just show current model (original behavior)
       const lines = [`🤖 Current Model\n\nPrimary: ${currentModel}`];
+      if (ctx.config) {
+        const runtime = describeModelRuntime(currentModel, ctx.config.models.providers);
+        lines.push(formatModelRuntimeLines(runtime, "").join("\n"));
+      }
       if (fallbacks.length > 0) {
         lines.push(`Fallbacks: ${fallbacks.join(", ")}`);
       }
@@ -243,7 +254,7 @@ export async function handleAdapterCommand(
     }
 
     case "version":
-      return "🔧 Clank v1.12.1";
+      return "🔧 Clank v1.12.2";
 
     default:
       return null; // Not a shared command — let adapter handle it

@@ -121,13 +121,14 @@ export class TelegramAdapter extends ChannelAdapter {
         // parallel model calls from flooding the local model
         const processMessage = async () => {
           if (!this.gateway) return;
+          let typingInterval: ReturnType<typeof setInterval> | undefined;
 
           try {
             console.log(`  Telegram: processing message from ${userId} in ${chatId}`);
             await ctx.api.sendChatAction(chatId, "typing").catch(() => {});
 
             // Keep sending "typing" every 4s while the model processes
-            const typingInterval = setInterval(() => {
+            typingInterval = setInterval(() => {
               bot.api.sendChatAction(chatId, "typing").catch(() => {});
             }, 4000);
 
@@ -254,7 +255,7 @@ export class TelegramAdapter extends ChannelAdapter {
             console.error(`  Telegram: message handler error — ${errMsg}`);
             await ctx.api.sendMessage(chatId, `⚠️ Error: ${errMsg.slice(0, 200)}`).catch(() => {});
           } finally {
-            clearInterval(typingInterval);
+            if (typingInterval) clearInterval(typingInterval);
           }
         };
 

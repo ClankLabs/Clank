@@ -86,7 +86,7 @@ Configure default behavior in config:
 | `/status` | Agent, model, session info |
 | `/agent [name]` | Switch or list agents |
 | `/session [key]` | Switch or list sessions |
-| `/model` | Show current model + fallbacks |
+| `/model` | Show current model, provider, tool mode, context, and fallbacks |
 | `/think` | Toggle thinking block visibility |
 | `/tools` | Toggle tool output display |
 | `/compact` | Save state, clear context, continue where you left off |
@@ -119,7 +119,8 @@ Commands are registered in Telegram's bot menu — they appear when you type `/`
 | `/status` | Model, agents, tasks, uptime |
 | `/agents` | List agents with their models |
 | `/agent <name>` | Switch to a different agent |
-| `/model` | Show model + fallback chain |
+| `/model` | Show model, provider, tool mode, context, and fallback chain |
+| `/models` | List available models and switch with `/models set <provider/model>` |
 | `/tasks` | Show background tasks with short IDs |
 | `/kill <id>` | Kill a specific task (cascades to children) |
 | `/killall` | Kill all running tasks |

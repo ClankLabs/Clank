@@ -101,6 +101,7 @@ export interface ModelConfig {
  * which injects tools into the system prompt as text.
  */
 const TOOL_CAPABLE_PATTERNS = [
+  /^wrench/i,
   /^llama3\.[1-9]/i,
   /^llama-3\.[1-9]/i,
   /^qwen[23]/i,

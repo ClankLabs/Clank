@@ -186,7 +186,7 @@ All adapters (Telegram, Discord, Signal) share a unified command handler (`src/a
 
 - **Auto-persistence** — memories saved automatically as conversations progress
 - **Decay scoring** — older memories lose relevance weight over time
-- **Smart injection for local models** — instead of injecting the full MEMORY.md (wastes tokens), the engine runs relevance matching and injects only memories that score above a threshold
+- **Smart injection for local models** — instead of injecting the full MEMORY.md (wastes tokens), the engine runs per-turn relevance matching against the latest user message and injects only memories that score above a threshold
 - **Plain files on disk** — no database, no external service
 
 ---

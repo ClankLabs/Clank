@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.12.2] — 2026-04-22
+
+### Improved
+- **Model diagnostics polish** — `/model`, `/models`, `clank chat`, `clank models list`, and the `manage_model` tool now show provider, local/cloud status, tool-call mode, context expectations, and provider configuration state.
+- **Setup model selection** — onboarding now recommends Wrench when it is detected locally, otherwise prefers Qwen-family models before falling back to the first detected model.
+- **Memory relevance** — session memory is now injected per turn using the latest user message instead of a generic `"session"` query, making TF-IDF memory matching useful across all models.
+- **Provider error details** — provider fallback failures now report the specific reason each model in the chain was skipped.
+
+### Fixed
+- **Wrench tool capability detection** — Wrench model aliases are now treated as native-tool-capable instead of falling through to prompt-based tool injection.
+- **Memory access metadata** — newly added memories now use stable file-based IDs so relevance access counts and decay metadata stay aligned.
+- **Direct CLI parity** — `clank chat` now passes local/cloud, compact prompt, thinking, diagnostics, and memory settings through the same path used by the harness.
+
+---
+
 ## [1.12.1] — 2026-04-04
 
 ### Fixed

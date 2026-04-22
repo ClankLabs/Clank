@@ -23,3 +23,10 @@ export {
   detectLocalServers,
   type ProviderConfig,
 } from "./router.js";
+
+export {
+  describeModelRuntime,
+  formatModelRuntimeLines,
+  isLocalProvider,
+  type ModelRuntimeInfo,
+} from "./model-diagnostics.js";

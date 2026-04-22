@@ -191,6 +191,8 @@ Models use the format `provider/model`:
 | `llamacpp/model-name` | llama.cpp server |
 | `lmstudio/model-name` | LM Studio |
 
+Run `clank models list` or `/models` to see provider status, local/cloud routing, tool-call mode, and context-window expectations for the active model.
+
 ### Fallback Chains
 
 Set a primary model with automatic fallbacks:

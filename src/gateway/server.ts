@@ -433,7 +433,7 @@ export class GatewayServer {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         status: "ok",
-        version: "1.12.1",
+        version: "1.12.2",
         uptime: process.uptime(),
         clients: this.clients.size,
         agents: this.engines.size,
@@ -578,7 +578,7 @@ export class GatewayServer {
     const hello: HelloFrame = {
       type: "hello",
       protocol: PROTOCOL_VERSION,
-      version: "1.12.1",
+      version: "1.12.2",
       agents: this.config.agents.list.map((a) => ({
         id: a.id,
         name: a.name || a.id,
@@ -941,7 +941,7 @@ export class GatewayServer {
       ? (this.taskRegistry.getBySessionKey(sessionKey)?.spawnDepth ?? 0) + 1
       : 0;
 
-    // Build system prompt from workspace files + memory
+    // Build system prompt from workspace files.
     // Sub-agents (spawnDepth > 0) get RUNNER.md injected for structured execution
     const compact = agentConfig?.compactPrompt ?? this.config.agents.defaults.compactPrompt ?? false;
     const thinking = agentConfig?.thinking ?? this.config.agents.defaults.thinking ?? "auto";
@@ -957,15 +957,9 @@ export class GatewayServer {
       canSpawn: currentDepth < maxSpawnDepthCfg,
     });
 
-    // Inject memory context into system prompt — use a smaller budget for
-    // local models since their context windows are limited (8K-32K).
-    // Local models skip MEMORY.md from workspace files and rely entirely
-    // on TF-IDF relevance matching here instead.
+    // Inject memory per turn using the latest user message. Local models use
+    // a smaller budget because their context windows are tighter.
     const memoryBudget = resolved.isLocal ? 800 : 4000;
-    const memoryBlock = await this.memoryManager.buildMemoryBlock("session", identity.workspace, memoryBudget);
-    const fullPrompt = memoryBlock
-      ? systemPrompt + "\n\n---\n\n" + memoryBlock
-      : systemPrompt;
 
     const maxSpawnDepth = maxSpawnDepthCfg;
     const maxConcurrent = this.config.agents.defaults.subagents?.maxConcurrent ?? 8;
@@ -1070,12 +1064,12 @@ export class GatewayServer {
     };
 
     // Sub-agent system prompt addition
-    let finalPrompt = fullPrompt;
+    let finalPrompt = systemPrompt;
     if (currentDepth > 0) {
       const depthNote = currentDepth < maxSpawnDepth
         ? "You can spawn further sub-agents if needed."
         : "You cannot spawn further sub-agents (depth limit reached).";
-      finalPrompt = `[Sub-Agent] You were spawned by a parent agent to complete a specific task.\n${depthNote}\n\n---\n\n${fullPrompt}`;
+      finalPrompt = `[Sub-Agent] You were spawned by a parent agent to complete a specific task.\n${depthNote}\n\n---\n\n${systemPrompt}`;
     }
 
     engine = new AgentEngine({
@@ -1093,6 +1087,8 @@ export class GatewayServer {
       spawnDepth: currentDepth,
       maxSpawnDepth,
       selfVerify: this.config.behavior?.selfVerify ?? false,
+      memoryBlockProvider: (userMessage) =>
+        this.memoryManager.buildMemoryBlock(userMessage, identity.workspace, memoryBudget),
     });
 
     await engine.loadSession(sessionKey, channel);

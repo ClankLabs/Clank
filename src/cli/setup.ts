@@ -37,6 +37,13 @@ function ask(rl: ReturnType<typeof createInterface>, question: string): Promise<
   return new Promise((resolve) => rl.question(question, resolve));
 }
 
+function chooseRecommendedLocalModel(models: string[]): string | undefined {
+  return models.find((m) => /wrench/i.test(m))
+    || models.find((m) => /qwen3\.?5/i.test(m))
+    || models.find((m) => /qwen/i.test(m))
+    || models[0];
+}
+
 export async function runSetup(opts: {
   quick?: boolean;
   advanced?: boolean;
@@ -103,7 +110,12 @@ export async function runSetup(opts: {
       console.log(green(`  Found ${primary.provider} at ${primary.baseUrl}`));
       console.log(dim(`    Models: ${primary.models.slice(0, 5).join(", ")}`));
 
-      const defaultModel = primary.models[0] || "qwen3.5";
+      const defaultModel = chooseRecommendedLocalModel(primary.models) || "qwen3.5";
+      if (/wrench/i.test(defaultModel)) {
+        console.log(dim("  Wrench detected. It is Clank's purpose-built agentic model and is the recommended local default."));
+      } else if (primary.models.length > 1) {
+        console.log(dim(`  Recommended default: ${defaultModel}`));
+      }
       const useDefault = await ask(rl, cyan(`  Use ${primary.provider}/${defaultModel} as default? [Y/n] `));
       if (useDefault.toLowerCase() !== "n") {
         config.agents.defaults.model.primary = `${primary.provider}/${defaultModel}`;

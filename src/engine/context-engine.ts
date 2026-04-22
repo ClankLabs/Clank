@@ -299,9 +299,14 @@ export class ContextEngine {
         }
       } else if (msg.role === "tool" && msg.tool_call_id) {
         // Orphaned tool result — find and drop its parent assistant message too
-        const parentIdx = this.messages.findLastIndex(
-          (m, idx) => idx < dropIdx && m.role === "assistant" && m.tool_calls?.some((tc) => tc.id === msg.tool_call_id)
-        );
+        let parentIdx = -1;
+        for (let i = dropIdx - 1; i >= 0; i--) {
+          const candidate = this.messages[i];
+          if (candidate.role === "assistant" && candidate.tool_calls?.some((tc) => tc.id === msg.tool_call_id)) {
+            parentIdx = i;
+            break;
+          }
+        }
         if (parentIdx >= 0) {
           // Drop the parent and ALL its tool results
           const parent = this.messages[parentIdx];
